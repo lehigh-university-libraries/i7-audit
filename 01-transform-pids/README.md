@@ -29,6 +29,7 @@ cp pids_namespaced.csv pids_namespaced.tmp
 echo "pid" > pids_namespaced.csv
 cat pids_namespaced.tmp >> pids_namespaced.csv
 rm pids_namespaced.tmp
+```
 
 Get PIDs that are not namespaced
 

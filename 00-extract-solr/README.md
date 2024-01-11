@@ -1,11 +1,22 @@
-# Extract documents from solr
+## Extract just pids from solr
 
-## Extract
+If all you need is a lisit of pids, you can just view the contents of the fedora object store directory
+
+```
+find /opt/islandora/fedora-objectStore -type f > pids.csv
+awk -F 'info%3Afedora%2F' '{print $2}' pids.csv| perl -pe 's/%([0-9a-f]{2})/chr hex $1/ieg' > pids_decoded.csv
+```
+
+## Extract documents from solr
+
+If you want to get the metadata for all the PIDs you can do this
+
+### Extract
 
 First, port forward port 8080 to your local machine
 
 ```
-ssh i7.domain 8080:localhost:8080
+ssh i7.domain -L 8080:localhost:8080
 ```
 
 Then in another terminal window run a script to crawl the solr index. Get the value for RECORDS based on how many document are in your solr index.
@@ -34,7 +45,7 @@ done
 
 ```
 
-## Transform
+### Transform
 
 Then trim down the solr documents
 

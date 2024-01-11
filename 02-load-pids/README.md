@@ -11,7 +11,7 @@ CREATE TABLE `_i7_pids` (
 )
 ```
 
-Load `pids_namespaced.csv` into the table
+Load `pids_decoded.csv` into the table
 
 ## Find missing PIDs
 

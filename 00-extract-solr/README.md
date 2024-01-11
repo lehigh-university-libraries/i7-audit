@@ -1,0 +1,68 @@
+# Extract documents from solr
+
+## Extract
+
+First, port forward port 8080 to your local machine
+
+```
+ssh i7.domain 8080:localhost:8080
+```
+
+Then in another terminal window run a script to crawl the solr index. Get the value for RECORDS based on how many document are in your solr index.
+
+```
+#!/usr/bin/env bash
+
+set -eou pipefail
+
+OFFSET=0
+LIMIT=100
+RECORDS=380432
+
+mkdir -p output
+
+while [ "$OFFSET" -lt "$RECORDS" ]; do
+    if [ ! -f "output/solr.$OFFSET.json" ]; then
+        url="http://localhost:8080/solr/collection1/select?q=*%3A*&start=$OFFSET&rows=$LIMIT&wt=json&indent=true"
+        echo "Fetching $url"
+        curl -o output/solr.$OFFSET.json -s "$url"
+        sleep 1
+    fi
+
+    OFFSET=$((OFFSET + LIMIT))
+done
+
+```
+
+## Transform
+
+Then trim down the solr documents
+
+```
+#!/usr/bin/env bash
+
+set -eou pipefail
+
+OFFSET=0
+LIMIT=100
+RECORDS=380432
+TOTAL=0
+
+mkdir -p transform
+
+while [ "$OFFSET" -lt "$RECORDS" ]; do
+    if [ -f "output/solr.$OFFSET.json" ]; then
+        if [ ! -f "transform/solr.$OFFSET.json" ]; then
+            jq '.response.docs[] |= with_entries(select(.key | startswith("dc") or (startswith("mods") and endswith("_mt"))))' output/solr.$OFFSET.json | jq .response.docs > transform/solr.$OFFSET.json
+        fi
+    fi
+    OFFSET=$((OFFSET + LIMIT))
+done
+
+```
+
+Put the output into a single doc
+
+```
+jq . transform/*.json > all.json
+```

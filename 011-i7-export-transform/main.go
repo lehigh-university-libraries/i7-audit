@@ -108,10 +108,11 @@ func getNumberFromRedirect(url string) (string, error) {
 	if resp.StatusCode == http.StatusOK {
 		links := resp.Header.Values("Link")
 		for _, link := range links {
-			if strings.Contains(link, "?_format=json") {
-				parts := strings.Split(link, "/")
+			if strings.Contains(link, "?_format=json>") {
+				index := strings.Index(link, "?_format=json")
+				parts := strings.Split(link[:index], "/")
 				if len(parts) >= 2 {
-					redirectCache[url] = parts[len(parts)-2]
+					redirectCache[url] = parts[len(parts)-1]
 					return redirectCache[url], nil
 				}
 			}

@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -105,6 +106,11 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	}
 	renameAndTransform(record, columnIndices, "field_member_of")
 
+	// get the islandora model
+	column := "RELS_EXT_hasModel_uri_s"
+	index := columnIndices[column]
+	record[index] = transformModel(record[index])
+
 	transformedRecord := []string{}
 	for k, v := range record {
 		if k != index1 && k != index2 && k != index3 {
@@ -129,6 +135,33 @@ func renameAndTransform(record []string, columnIndices map[string]int, columnNam
 	}
 }
 
+func transformModel(model string) string {
+	switch model {
+	case "info:fedora/islandora:binaryObjectCModel":
+		return "Binary"
+	case "info:fedora/islandora:bookCModel":
+		return "Paged Content"
+	case "info:fedora/islandora:collectionCModel":
+		return "Sub-Collection"
+	case "info:fedora/islandora:pageCModel":
+		return "Page"
+	case "info:fedora/islandora:sp_basic_image":
+		return "Image"
+	case "info:fedora/islandora:sp_document":
+		return "Digital Document"
+	case "info:fedora/islandora:sp_large_image_cmodel":
+		return "Image"
+	case "info:fedora/islandora:sp_pdf":
+		return "Digital Document"
+	case "info:fedora/islandora:sp_videoCModel":
+		return "Video"
+	case "info:fedora/islandora:sp_web_archive":
+		return "Binary"
+	}
+
+	return ""
+}
+
 func pid2nid(url string) (string, error) {
 	if url == "" {
 		return "", nil
@@ -136,7 +169,7 @@ func pid2nid(url string) (string, error) {
 	if cachedNumber, found := redirectCache[url]; found {
 		return cachedNumber, nil
 	}
-
+	log.Println(url)
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Error fetching URL:", err)

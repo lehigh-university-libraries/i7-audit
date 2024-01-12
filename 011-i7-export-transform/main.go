@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+var (
+	redirectCache = make(map[string]string)
+)
+
 func main() {
 	inputFilePath := "input.csv"
 	outputFilePath := "output.csv"
@@ -36,6 +40,24 @@ func main() {
 		return
 	}
 
+	// Remove the columns to be transformed and add "field_member_of" to the header
+	updatedHeader := []string{}
+	for _, columnName := range columnNames {
+		if columnName != "RELS_EXT_isMemberOfCollection_uri_ms" &&
+			columnName != "RELS_EXT_isMemberOf_uri_ms" &&
+			columnName != "RELS_EXT_isPageOf_uri_ms" {
+			updatedHeader = append(updatedHeader, columnName)
+		}
+	}
+	updatedHeader = append(updatedHeader, "field_member_of")
+	columnNames = append(columnNames, "field_member_of")
+
+	// Write the updated header to the output CSV
+	if err := csvWriter.Write(updatedHeader); err != nil {
+		fmt.Println("Error writing CSV header:", err)
+		return
+	}
+
 	columnIndices := make(map[string]int)
 	for i, name := range columnNames {
 		columnIndices[name] = i
@@ -51,9 +73,9 @@ func main() {
 			return
 		}
 
-		transformColumns(record, columnIndices)
+		transformedRecord := transformColumns(record, columnIndices)
 
-		if err := csvWriter.Write(record); err != nil {
+		if err := csvWriter.Write(transformedRecord); err != nil {
 			fmt.Println("Error writing CSV:", err)
 			return
 		}
@@ -69,10 +91,28 @@ func main() {
 	fmt.Println("CSV transformation complete. Output written to", outputFilePath)
 }
 
-func transformColumns(record []string, columnIndices map[string]int) {
-	renameAndTransform(record, columnIndices, "RELS_EXT_isMemberOfCollection_uri_ms")
-	renameAndTransform(record, columnIndices, "RELS_EXT_isMemberOf_uri_ms")
-	renameAndTransform(record, columnIndices, "RELS_EXT_isPageOf_uri_ms")
+func transformColumns(record []string, columnIndices map[string]int) []string {
+	// merge the various field_member_of columns into a single column
+	index1, _ := columnIndices["RELS_EXT_isMemberOfCollection_uri_ms"]
+	index2, _ := columnIndices["RELS_EXT_isMemberOf_uri_ms"]
+	index3, _ := columnIndices["RELS_EXT_isPageOf_uri_ms"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
+	} else if record[index3] != "" {
+		record = append(record, record[index3])
+	}
+	renameAndTransform(record, columnIndices, "field_member_of")
+
+	transformedRecord := []string{}
+	for k, v := range record {
+		if k != index1 && k != index2 && k != index3 {
+			transformedRecord = append(transformedRecord, v)
+		}
+	}
+
+	return transformedRecord
 }
 
 func renameAndTransform(record []string, columnIndices map[string]int, columnName string) {
@@ -84,14 +124,12 @@ func renameAndTransform(record []string, columnIndices map[string]int, columnNam
 	cell := record[index]
 	cell = strings.ReplaceAll(cell, "info:fedora/", "https://islandora-stage.lib.lehigh.edu/islandora/object/")
 
-	if number, err := getNumberFromRedirect(cell); err == nil {
+	if number, err := pid2nid(cell); err == nil {
 		record[index] = number
 	}
 }
 
-var redirectCache = make(map[string]string)
-
-func getNumberFromRedirect(url string) (string, error) {
+func pid2nid(url string) (string, error) {
 	if url == "" {
 		return "", nil
 	}

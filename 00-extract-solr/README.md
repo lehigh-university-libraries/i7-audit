@@ -64,6 +64,9 @@ mkdir -p transform
 while [ "$OFFSET" -lt "$RECORDS" ]; do
     if [ -f "output/solr.$OFFSET.json" ]; then
         if [ ! -f "transform/solr.$OFFSET.json" ]; then
+            # TODO: should also include
+            # 'RELS_EXT_isPageOf_uri_ms', 'RELS_EXT_isConstituentOf_uri_ms', 'RELS_EXT_isMemberOf_uri_ms',
+            # 'RELS_EXT_isMemberOfCollection_uri_ms', 'RELS_EXT_hasModel_uri_s', 'PID'
             jq '.response.docs[] |= with_entries(select(.key | startswith("dc") or (startswith("mods") and endswith("_mt"))))' output/solr.$OFFSET.json | jq .response.docs > transform/solr.$OFFSET.json
         fi
     fi

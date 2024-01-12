@@ -47,7 +47,15 @@ func main() {
 		if columnName != "RELS_EXT_isMemberOfCollection_uri_ms" &&
 			columnName != "RELS_EXT_isMemberOf_uri_ms" &&
 			columnName != "RELS_EXT_isPageOf_uri_ms" {
-			updatedHeader = append(updatedHeader, columnName)
+
+			switch columnName {
+			case "PID":
+				updatedHeader = append(updatedHeader, "field_pid")
+			case "RELS_EXT_hasModel_uri_s":
+				updatedHeader = append(updatedHeader, "field_model")
+			default:
+				updatedHeader = append(updatedHeader, columnName)
+			}
 		}
 	}
 	updatedHeader = append(updatedHeader, "field_member_of")

@@ -46,7 +46,8 @@ func main() {
 	for _, columnName := range columnNames {
 		if columnName != "RELS_EXT_isMemberOfCollection_uri_ms" &&
 			columnName != "RELS_EXT_isMemberOf_uri_ms" &&
-			columnName != "RELS_EXT_isPageOf_uri_ms" {
+			columnName != "RELS_EXT_isPageOf_uri_ms" &&
+			columnName != "RELS_EXT_isConstituentOf_uri_ms" {
 
 			switch columnName {
 			case "PID":
@@ -105,13 +106,17 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	index1, _ := columnIndices["RELS_EXT_isMemberOfCollection_uri_ms"]
 	index2, _ := columnIndices["RELS_EXT_isMemberOf_uri_ms"]
 	index3, _ := columnIndices["RELS_EXT_isPageOf_uri_ms"]
+	index4, _ := columnIndices["RELS_EXT_isConstituentOf_uri_ms"]
 	if record[index1] != "" {
 		record = append(record, record[index1])
 	} else if record[index2] != "" {
 		record = append(record, record[index2])
 	} else if record[index3] != "" {
 		record = append(record, record[index3])
+	} else if record[index4] != "" {
+		record = append(record, record[index4])
 	}
+
 	renameAndTransform(record, columnIndices, "field_member_of")
 
 	// get the islandora model
@@ -156,7 +161,7 @@ func transformModel(model string) string {
 	case "info:fedora/islandora:sp_basic_image":
 		return "Image"
 	case "info:fedora/islandora:sp_document":
-		return "Digital Document"
+		return "Binary"
 	case "info:fedora/islandora:sp_large_image_cmodel":
 		return "Image"
 	case "info:fedora/islandora:sp_pdf":

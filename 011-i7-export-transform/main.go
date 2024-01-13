@@ -11,7 +11,30 @@ import (
 )
 
 var (
-	redirectCache = make(map[string]string)
+	redirectCache          = make(map[string]string)
+	mergedOrDroppedColumns = []string{
+		// field_member_of
+		"RELS_EXT_isConstituentOf_uri_ms",
+		"RELS_EXT_isMemberOfCollection_uri_ms",
+		"RELS_EXT_isMemberOf_uri_ms",
+		"RELS_EXT_isPageOf_uri_ms",
+		// field_linked_agent
+		"dc.creator",
+		"dc.contributor",
+		"mods_name_photographer_namePart_ms",
+		"mods_name_corporate_department_namePart_ms",
+		"mods_name_thesis_advisor_namePart_ms",
+		// title
+		"mods_titleInfo_title_all_ms",
+		"mods_titleInfo_title_ms",
+		"dc.title",
+		// field_description
+		"mods_abstract_mt",
+		"dc.description",
+		// ignored
+		"ID",
+		"file",
+	}
 )
 
 func main() {
@@ -44,23 +67,51 @@ func main() {
 	// Remove the columns to be transformed and add "field_member_of" to the header
 	updatedHeader := []string{}
 	for _, columnName := range columnNames {
-		if columnName != "RELS_EXT_isMemberOfCollection_uri_ms" &&
-			columnName != "RELS_EXT_isMemberOf_uri_ms" &&
-			columnName != "RELS_EXT_isPageOf_uri_ms" &&
-			columnName != "RELS_EXT_isConstituentOf_uri_ms" {
+		if strInSlice(columnName, mergedOrDroppedColumns) {
+			continue
+		}
 
-			switch columnName {
-			case "PID":
-				updatedHeader = append(updatedHeader, "field_pid")
-			case "RELS_EXT_hasModel_uri_s":
-				updatedHeader = append(updatedHeader, "field_model")
-			default:
-				updatedHeader = append(updatedHeader, columnName)
-			}
+		switch columnName {
+		case "PID":
+			updatedHeader = append(updatedHeader, "field_pid")
+		case "dc.title":
+			updatedHeader = append(updatedHeader, "title")
+		case "RELS_EXT_hasModel_uri_s":
+			updatedHeader = append(updatedHeader, "field_model")
+		case "sequence":
+			updatedHeader = append(updatedHeader, "field_weight")
+		case "mods_name_1_nameIdentifier_orcid_ms":
+			updatedHeader = append(updatedHeader, "field_orcid_num")
+		case "mods_subject_name_personal_namePart_ms":
+			updatedHeader = append(updatedHeader, "field_subjects_name")
+		case "mods_name_creator_affiliation_institution_mt":
+			updatedHeader = append(updatedHeader, "field_affiliated_institution")
+		case "mods_name_addressee_namePart_ms":
+			updatedHeader = append(updatedHeader, "")
+		case "mods_name_creator_description_ms":
+			updatedHeader = append(updatedHeader, "")
+		case "mods_name_creator_affiliation_email_ss":
+			updatedHeader = append(updatedHeader, "field_creator_email")
+		case "mods_name_creator_namePart_ms":
+			updatedHeader = append(updatedHeader, "")
+		case "mods_name_personal_author_namePart_ms":
+			updatedHeader = append(updatedHeader, "")
+		default:
+			updatedHeader = append(updatedHeader, columnName)
 		}
 	}
-	updatedHeader = append(updatedHeader, "field_member_of")
-	columnNames = append(columnNames, "field_member_of")
+
+	// the order of this slice matters.
+	// see the calls to merge*() in transformColumns()
+	newColumns := []string{
+		"field_member_of",
+		"title",
+		"field_description",
+	}
+	for _, newColumn := range newColumns {
+		updatedHeader = append(updatedHeader, newColumn)
+		columnNames = append(columnNames, newColumn)
+	}
 
 	// Write the updated header to the output CSV
 	if err := csvWriter.Write(updatedHeader); err != nil {
@@ -102,6 +153,69 @@ func main() {
 }
 
 func transformColumns(record []string, columnIndices map[string]int) []string {
+	transformModel(record, columnIndices)
+
+	// the order in which we call these matters since we're appending the CSV header
+	// along with appending the new value in the CSV
+	// TODO: we should consider refactoring to coordinate this instead
+	newRecord := mergeMemberOf(record, columnIndices)
+	newRecord = mergeTitle(newRecord, columnIndices)
+	newRecord = mergeDescription(newRecord, columnIndices)
+
+	// remove the columns we've merged into a single new column
+	hiddenIndices := []int{}
+	for _, column := range mergedOrDroppedColumns {
+		index := columnIndices[column]
+		hiddenIndices = append(hiddenIndices, index)
+	}
+	transformedRecord := []string{}
+	for k, cell := range newRecord {
+		if intInSlice(k, hiddenIndices) {
+			continue
+		}
+
+		// remove solr's escaped commas
+		cell = strings.ReplaceAll(cell, "\\,", ",")
+		transformedRecord = append(transformedRecord, cell)
+	}
+
+	return transformedRecord
+}
+
+func transformModel(record []string, columnIndices map[string]int) {
+	column := "RELS_EXT_hasModel_uri_s"
+	index := columnIndices[column]
+	record[index] = getModel(record[index])
+}
+
+func mergeTitle(record []string, columnIndices map[string]int) []string {
+	index1, _ := columnIndices["mods_titleInfo_title_all_ms"]
+	index2, _ := columnIndices["mods_titleInfo_title_ms"]
+	index3, _ := columnIndices["dc.title"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
+	} else if record[index3] != "" {
+		record = append(record, record[index3])
+	}
+
+	return record
+}
+
+func mergeDescription(record []string, columnIndices map[string]int) []string {
+	index1, _ := columnIndices["mods_abstract_mt"]
+	index2, _ := columnIndices["dc.description"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
+	}
+
+	return record
+}
+
+func mergeMemberOf(record []string, columnIndices map[string]int) []string {
 	// merge the various field_member_of columns into a single column
 	index1, _ := columnIndices["RELS_EXT_isMemberOfCollection_uri_ms"]
 	index2, _ := columnIndices["RELS_EXT_isMemberOf_uri_ms"]
@@ -117,24 +231,12 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index4])
 	}
 
-	renameAndTransform(record, columnIndices, "field_member_of")
+	memberOfStringToEntityId(record, columnIndices, "field_member_of")
 
-	// get the islandora model
-	column := "RELS_EXT_hasModel_uri_s"
-	index := columnIndices[column]
-	record[index] = transformModel(record[index])
-
-	transformedRecord := []string{}
-	for k, v := range record {
-		if k != index1 && k != index2 && k != index3 {
-			transformedRecord = append(transformedRecord, v)
-		}
-	}
-
-	return transformedRecord
+	return record
 }
 
-func renameAndTransform(record []string, columnIndices map[string]int, columnName string) {
+func memberOfStringToEntityId(record []string, columnIndices map[string]int, columnName string) {
 	index, found := columnIndices[columnName]
 	if !found {
 		return
@@ -148,7 +250,7 @@ func renameAndTransform(record []string, columnIndices map[string]int, columnNam
 	}
 }
 
-func transformModel(model string) string {
+func getModel(model string) string {
 	switch model {
 	case "info:fedora/islandora:binaryObjectCModel":
 		return "Binary"
@@ -172,6 +274,8 @@ func transformModel(model string) string {
 		return "Binary"
 	}
 
+	log.Fatalf("Missing model: %s", model)
+
 	return ""
 }
 
@@ -189,19 +293,39 @@ func pid2nid(url string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusOK {
-		links := resp.Header.Values("Link")
-		for _, link := range links {
-			if strings.Contains(link, "?_format=json>") {
-				index := strings.Index(link, "?_format=json")
-				parts := strings.Split(link[:index], "/")
-				if len(parts) >= 2 {
-					redirectCache[url] = parts[len(parts)-1]
-					return redirectCache[url], nil
-				}
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Unable to find node ID for parent %s", url)
+	}
+	links := resp.Header.Values("Link")
+	for _, link := range links {
+		if strings.Contains(link, "?_format=json>") {
+			index := strings.Index(link, "?_format=json")
+			parts := strings.Split(link[:index], "/")
+			if len(parts) >= 2 {
+				redirectCache[url] = parts[len(parts)-1]
+				return redirectCache[url], nil
 			}
 		}
 	}
+	log.Fatalf("Unable to find node ID for parent %s: %v", url, links)
 
 	return url, nil
+}
+
+func intInSlice(e int, s []int) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func strInSlice(e string, s []string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

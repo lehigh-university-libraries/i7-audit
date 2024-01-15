@@ -2,16 +2,26 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
+type IslandoraObject struct {
+	Nid []IntField `json:"nid"`
+}
+
+type IntField struct {
+	Value int `json:"value"`
+}
+
 var (
-	redirectCache          = make(map[string]string)
+	redirectCache          = make(map[string]int)
 	mergedOrDroppedColumns = []string{
 		// field_member_of
 		"RELS_EXT_isConstituentOf_uri_ms",
@@ -20,6 +30,7 @@ var (
 		"RELS_EXT_isPageOf_uri_ms",
 		// field_linked_agent
 		"dc.creator",
+		"mods_name_creator_namePart_ms",
 		"dc.contributor",
 		"dc.publisher",
 		"mods_name_photographer_namePart_ms",
@@ -502,9 +513,9 @@ func memberOfStringToEntityId(record []string, columnIndices map[string]int, col
 
 	cell := record[index]
 	cell = strings.ReplaceAll(cell, "info:fedora/", "https://islandora-stage.lib.lehigh.edu/islandora/object/")
-
+	cell = fmt.Sprintf("%s?_format=json", cell)
 	if number, err := pid2nid(cell); err == nil {
-		record[index] = number
+		record[index] = strconv.Itoa(number)
 	}
 }
 
@@ -537,9 +548,9 @@ func getModel(model string) string {
 	return ""
 }
 
-func pid2nid(url string) (string, error) {
+func pid2nid(url string) (int, error) {
 	if url == "" {
-		return "", nil
+		return 0, nil
 	}
 	if cachedNumber, found := redirectCache[url]; found {
 		return cachedNumber, nil
@@ -548,26 +559,25 @@ func pid2nid(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Error fetching URL:", err)
-		return "", err
+		return 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		log.Fatalf("Unable to find node ID for parent %s", url)
 	}
-	links := resp.Header.Values("Link")
-	for _, link := range links {
-		if strings.Contains(link, "?_format=json>") {
-			index := strings.Index(link, "?_format=json")
-			parts := strings.Split(link[:index], "/")
-			if len(parts) >= 2 {
-				redirectCache[url] = parts[len(parts)-1]
-				return redirectCache[url], nil
-			}
-		}
-	}
-	log.Fatalf("Unable to find node ID for parent %s: %v", url, links)
 
-	return url, nil
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln("Error reading response body:", err)
+	}
+
+	var node IslandoraObject
+	if err := json.Unmarshal(body, &node); err != nil {
+		log.Fatalln("Error unmarshaling JSON:", err)
+	}
+
+	redirectCache[url] = node.Nid[0].Value
+	return redirectCache[url], nil
 }
 
 func intInSlice(e int, s []int) bool {

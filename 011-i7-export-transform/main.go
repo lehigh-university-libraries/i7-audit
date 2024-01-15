@@ -41,6 +41,9 @@ var (
 		// field_rights
 		"dc.rights",
 		"mods_accessCondition_use_and_reproduction_ms",
+		// field_edtf_date_created
+		"dc.date",
+		"mods_originInfo_dateCreated_mdt",
 		// ignored
 		"ID",
 		"file",
@@ -106,10 +109,6 @@ func main() {
 			updatedHeader = append(updatedHeader, columnName)
 		case "RELS_EXT_embargo-expiry-notification-date_literal_ss":
 			updatedHeader = append(updatedHeader, columnName)
-		case "dc.coverage":
-			updatedHeader = append(updatedHeader, columnName)
-		case "dc.date":
-			updatedHeader = append(updatedHeader, columnName)
 		case "dc.format":
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.identifier":
@@ -117,7 +116,7 @@ func main() {
 		case "dc.relation":
 			updatedHeader = append(updatedHeader, "field_relation")
 		case "dc.source":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_source")
 		case "dc.subject":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_genre_ms":
@@ -146,8 +145,6 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_staff")
 		case "mods_originInfo_dateCaptured_ms":
 			updatedHeader = append(updatedHeader, "field_date_captured")
-		case "mods_originInfo_dateCreated_mdt":
-			updatedHeader = append(updatedHeader, "field_edtf_date_created")
 		case "mods_originInfo_dateOther_ms":
 			updatedHeader = append(updatedHeader, "field_edtf_date")
 		case "mods_originInfo_point_end_dateOther_mdt":
@@ -197,6 +194,7 @@ func main() {
 		"field_language",
 		"field_linked_agent",
 		"field_rights",
+		"field_edtf_date_created",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -256,6 +254,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord = mergeLanguage(newRecord, columnIndices)
 	newRecord = mergeLinkedAgent(newRecord, columnIndices)
 	newRecord = mergeRights(newRecord, columnIndices)
+	newRecord = mergeDateCreated(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -346,6 +345,20 @@ func mergeType(record []string, columnIndices map[string]int) []string {
 func mergeLanguage(record []string, columnIndices map[string]int) []string {
 	index1, _ := columnIndices["dc.language"]
 	index2, _ := columnIndices["mods_language_languageTerm_ms"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
+	} else {
+		record = append(record, "")
+	}
+
+	return record
+}
+
+func mergeDateCreated(record []string, columnIndices map[string]int) []string {
+	index1, _ := columnIndices["mods_originInfo_dateCreated_mdt"]
+	index2, _ := columnIndices["dc.date"]
 	if record[index1] != "" {
 		record = append(record, record[index1])
 	} else if record[index2] != "" {

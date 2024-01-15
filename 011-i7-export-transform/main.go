@@ -379,7 +379,7 @@ func mergeGeographicSubject(record []string, columnIndices map[string]int) []str
 		"mods_subject_geographic_ms":               "geo_location",
 		"dc.coverage":                              "geo_location",
 	}
-	subjects := []string{}
+	subjects := map[string]bool{}
 	for field, vocabulary := range fields {
 		index, _ := columnIndices[field]
 		if strings.TrimSpace(record[index]) == "" {
@@ -388,11 +388,17 @@ func mergeGeographicSubject(record []string, columnIndices map[string]int) []str
 
 		values := strings.Split(record[index], ";")
 		for _, subject := range values {
-			subjects = append(subjects, fmt.Sprintf("%s:%s", vocabulary, strings.TrimSpace(subject)))
+			subject = fmt.Sprintf("%s:%s", vocabulary, strings.TrimSpace(subject))
+			subjects[subject] = true
 		}
 	}
 
-	record = append(record, strings.Join(subjects, "|"))
+	uniqSubjects := []string{}
+	for subject, _ := range subjects {
+		uniqSubjects = append(uniqSubjects, subject)
+	}
+
+	record = append(record, strings.Join(uniqSubjects, "|"))
 	return record
 }
 
@@ -401,7 +407,7 @@ func mergeTopicalSubject(record []string, columnIndices map[string]int) []string
 		"mods_subject_topic_ms",
 		"dc.subject",
 	}
-	subjects := []string{}
+	subjects := map[string]bool{}
 	for _, field := range fields {
 		index, _ := columnIndices[field]
 		if strings.TrimSpace(record[index]) == "" {
@@ -410,11 +416,17 @@ func mergeTopicalSubject(record []string, columnIndices map[string]int) []string
 
 		values := strings.Split(record[index], ";")
 		for _, subject := range values {
-			subjects = append(subjects, strings.TrimSpace(subject))
+			subject = strings.TrimSpace(subject)
+			subjects[subject] = true
 		}
 	}
 
-	record = append(record, strings.Join(subjects, "|"))
+	uniqSubjects := []string{}
+	for subject, _ := range subjects {
+		uniqSubjects = append(uniqSubjects, subject)
+	}
+
+	record = append(record, strings.Join(uniqSubjects, "|"))
 	return record
 }
 
@@ -426,7 +438,7 @@ func mergeLinkedAgent(record []string, columnIndices map[string]int) []string {
 		"mods_name_photographer_namePart_ms":   "pht",
 		"mods_name_thesis_advisor_namePart_ms": "ths",
 	}
-	agents := []string{}
+	agents := map[string]bool{}
 	for field, relator := range fields {
 		index, _ := columnIndices[field]
 		if strings.TrimSpace(record[index]) == "" {
@@ -435,11 +447,17 @@ func mergeLinkedAgent(record []string, columnIndices map[string]int) []string {
 
 		values := strings.Split(record[index], ";")
 		for _, agent := range values {
-			agents = append(agents, fmt.Sprintf("relators:%s:person:%s", relator, strings.TrimSpace(agent)))
+			agent = fmt.Sprintf("relators:%s:person:%s", relator, strings.TrimSpace(agent))
+			agents[agent] = true
 		}
 	}
 
-	record = append(record, strings.Join(agents, "|"))
+	uniqAgents := []string{}
+	for agent, _ := range agents {
+		uniqAgents = append(uniqAgents, agent)
+	}
+
+	record = append(record, strings.Join(uniqAgents, "|"))
 	return record
 }
 

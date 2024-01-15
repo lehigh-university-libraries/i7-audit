@@ -322,6 +322,8 @@ func mergeTitle(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index2])
 	} else if record[index3] != "" {
 		record = append(record, record[index3])
+	} else {
+		record = append(record, "[Untitled]")
 	}
 
 	return record
@@ -351,6 +353,8 @@ func mergeType(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index2])
 	} else if record[index3] != "" {
 		record = append(record, record[index3])
+	} else {
+		record = append(record, "")
 	}
 
 	return record
@@ -479,6 +483,8 @@ func mergeDescription(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index1])
 	} else if record[index2] != "" {
 		record = append(record, record[index2])
+	} else {
+		record = append(record, "")
 	}
 
 	return record

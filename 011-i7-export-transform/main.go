@@ -38,9 +38,16 @@ var (
 		// field_language
 		"dc.language",
 		"mods_language_languageTerm_ms",
+		// field_rights
+		"dc.rights",
+		"mods_accessCondition_use_and_reproduction_ms",
 		// ignored
 		"ID",
 		"file",
+		"mods_part_detail_issue_number_ss",
+		"mods_part_detail_volume_number_ss",
+		// alias of dc.publisher
+		"mods_originInfo_publisher_ms",
 	}
 )
 
@@ -109,13 +116,9 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_identifier")
 		case "dc.relation":
 			updatedHeader = append(updatedHeader, "field_relation")
-		case "dc.rights":
-			updatedHeader = append(updatedHeader, columnName)
 		case "dc.source":
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.subject":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_accessCondition_use_and_reproduction_ms":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_genre_ms":
 			updatedHeader = append(updatedHeader, "field_genre")
@@ -125,52 +128,42 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_call_number")
 		case "mods_identifier_oclc_ms":
 			updatedHeader = append(updatedHeader, "field_oclc_number")
-		case "mods_identifier_reference_ms":
-			updatedHeader = append(updatedHeader, columnName)
 		case "mods_identifier_uri_displayLabel_ms":
 			updatedHeader = append(updatedHeader, "field_uri_identifier.title")
 		case "mods_identifier_uri_ms":
 			updatedHeader = append(updatedHeader, "field_uri_identifier.uri")
 		case "mods_location_physicalLocation_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_physical_location")
 		case "mods_name_corporate_department_namePart_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_department_name")
 		case "mods_note_capture_device_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_capture_device")
 		case "mods_note_category_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_category")
 		case "mods_note_ppi_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_ppi")
 		case "mods_note_staff_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_staff")
 		case "mods_originInfo_dateCaptured_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_date_captured")
 		case "mods_originInfo_dateCreated_mdt":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_edtf_date_created")
 		case "mods_originInfo_dateOther_ms":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_originInfo_encoding_iso8601_keyDate_yes_dateIssued_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_edtf_date")
 		case "mods_originInfo_point_end_dateOther_mdt":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_end_date")
 		case "mods_originInfo_point_start_dateOther_mdt":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_originInfo_publisher_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_start_date")
 		case "mods_originInfo_type_season_dateOther_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_date_other")
 		case "mods_originInfo_type_year_dateOther_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_date_other")
 		case "mods_part_detail_issue_number_s":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_part_detail_issue_number_ss":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_issue_number")
 		case "mods_part_detail_volume_number_s":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_part_detail_volume_number_ss":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_volume_number")
 		case "mods_physicalDescription_digitalOrigin_mt":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_digital_origin")
 		case "mods_physicalDescription_extent_ms":
 			updatedHeader = append(updatedHeader, "field_extent")
 		case "mods_physicalDescription_form_ms":
@@ -178,13 +171,13 @@ func main() {
 		case "mods_physicalDescription_form_valueURI_ms":
 			updatedHeader = append(updatedHeader, "field_physical_description_uri")
 		case "mods_physicalDescription_internetMediaType_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_media_type")
 		case "mods_relatedItem_host_titleInfo_title_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_host")
 		case "mods_relatedItem_original_titleInfo_title_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_original_title")
 		case "mods_subject_authority_naf_geographic_ss":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_geographic_subject")
 		case "mods_subject_geographic_ms":
 			updatedHeader = append(updatedHeader, "field_geographic_subject")
 		case "mods_subject_topic_ms":
@@ -203,6 +196,7 @@ func main() {
 		"field_resource_type",
 		"field_language",
 		"field_linked_agent",
+		"field_rights",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -261,6 +255,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord = mergeType(newRecord, columnIndices)
 	newRecord = mergeLanguage(newRecord, columnIndices)
 	newRecord = mergeLinkedAgent(newRecord, columnIndices)
+	newRecord = mergeRights(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -314,6 +309,20 @@ func mergeTitle(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index2])
 	} else if record[index3] != "" {
 		record = append(record, record[index3])
+	}
+
+	return record
+}
+
+func mergeRights(record []string, columnIndices map[string]int) []string {
+	index1, _ := columnIndices["dc.rights"]
+	index2, _ := columnIndices["mods_accessCondition_use_and_reproduction_ms"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
+	} else {
+		record = append(record, "")
 	}
 
 	return record

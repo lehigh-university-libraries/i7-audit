@@ -100,7 +100,7 @@ func main() {
 		case "dc.format":
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.identifier":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_identifier")
 		case "dc.language":
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.publisher":
@@ -251,6 +251,7 @@ func main() {
 
 func transformColumns(record []string, columnIndices map[string]int) []string {
 	transformModel(record, columnIndices)
+	cleanIdentifier(record, columnIndices)
 
 	// the order in which we call these matters since we're appending the CSV header
 	// along with appending the new value in the CSV
@@ -283,6 +284,22 @@ func transformModel(record []string, columnIndices map[string]int) {
 	column := "RELS_EXT_hasModel_uri_s"
 	index := columnIndices[column]
 	record[index] = getModel(record[index])
+}
+
+func cleanIdentifier(record []string, columnIndices map[string]int) {
+	column := "dc.identifier"
+	index := columnIndices[column]
+	prefixesToIgnore := []string{"islandora:", "digitalcollections:", "preserve:"}
+
+	identifiers := []string{}
+	for _, identifier := range strings.Split(record[index], ",") {
+		if strStartsWith(identifier, prefixesToIgnore) {
+			continue
+		}
+		identifiers = append(identifiers, strings.TrimSpace(identifier))
+	}
+
+	record[index] = strings.Join(identifiers, "|")
 }
 
 func mergeTitle(record []string, columnIndices map[string]int) []string {
@@ -421,6 +438,15 @@ func intInSlice(e int, s []int) bool {
 func strInSlice(e string, s []string) bool {
 	for _, a := range s {
 		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func strStartsWith(str string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(str, prefix) {
 			return true
 		}
 	}

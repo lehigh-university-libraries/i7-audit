@@ -44,6 +44,10 @@ var (
 		// field_edtf_date_created
 		"dc.date",
 		"mods_originInfo_dateCreated_mdt",
+		// field_geographic_subject
+		"mods_subject_authority_naf_geographic_ss",
+		"mods_subject_geographic_ms",
+		"dc.coverage",
 		// ignored
 		"ID",
 		"file",
@@ -173,10 +177,6 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_host")
 		case "mods_relatedItem_original_titleInfo_title_ms":
 			updatedHeader = append(updatedHeader, "field_original_title")
-		case "mods_subject_authority_naf_geographic_ss":
-			updatedHeader = append(updatedHeader, "field_geographic_subject")
-		case "mods_subject_geographic_ms":
-			updatedHeader = append(updatedHeader, "field_geographic_subject")
 		case "mods_subject_topic_ms":
 			updatedHeader = append(updatedHeader, "field_subject")
 		default:
@@ -195,6 +195,7 @@ func main() {
 		"field_linked_agent",
 		"field_rights",
 		"field_edtf_date_created",
+		"field_geographic_subject",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -255,6 +256,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord = mergeLinkedAgent(newRecord, columnIndices)
 	newRecord = mergeRights(newRecord, columnIndices)
 	newRecord = mergeDateCreated(newRecord, columnIndices)
+	newRecord = mergeGeographicSubject(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -367,6 +369,29 @@ func mergeDateCreated(record []string, columnIndices map[string]int) []string {
 		record = append(record, "")
 	}
 
+	return record
+}
+
+func mergeGeographicSubject(record []string, columnIndices map[string]int) []string {
+	fields := map[string]string{
+		"mods_subject_authority_naf_geographic_ss": "geographic_naf",
+		"mods_subject_geographic_ms":               "geo_location",
+		"dc.coverage":                              "geo_location",
+	}
+	subjects := []string{}
+	for field, vocabulary := range fields {
+		index, _ := columnIndices[field]
+		if strings.TrimSpace(record[index]) == "" {
+			continue
+		}
+
+		values := strings.Split(record[index], ";")
+		for _, subject := range values {
+			subjects = append(subjects, fmt.Sprintf("relators:%s:person:%s", vocabulary, strings.TrimSpace(subject)))
+		}
+	}
+
+	record = append(record, strings.Join(subjects, "|"))
 	return record
 }
 

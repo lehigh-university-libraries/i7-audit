@@ -21,8 +21,8 @@ var (
 		// field_linked_agent
 		"dc.creator",
 		"dc.contributor",
+		"dc.publisher",
 		"mods_name_photographer_namePart_ms",
-		"mods_name_corporate_department_namePart_ms",
 		"mods_name_thesis_advisor_namePart_ms",
 		// title
 		"mods_titleInfo_title_all_ms",
@@ -107,10 +107,8 @@ func main() {
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.identifier":
 			updatedHeader = append(updatedHeader, "field_identifier")
-		case "dc.publisher":
-			updatedHeader = append(updatedHeader, columnName)
 		case "dc.relation":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_relation")
 		case "dc.rights":
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.source":
@@ -134,6 +132,8 @@ func main() {
 		case "mods_identifier_uri_ms":
 			updatedHeader = append(updatedHeader, "field_uri_identifier.uri")
 		case "mods_location_physicalLocation_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_name_corporate_department_namePart_ms":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_note_capture_device_ms":
 			updatedHeader = append(updatedHeader, columnName)
@@ -202,6 +202,7 @@ func main() {
 		"field_description",
 		"field_resource_type",
 		"field_language",
+		"field_linked_agent",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -259,6 +260,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord = mergeDescription(newRecord, columnIndices)
 	newRecord = mergeType(newRecord, columnIndices)
 	newRecord = mergeLanguage(newRecord, columnIndices)
+	newRecord = mergeLinkedAgent(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -339,8 +341,35 @@ func mergeLanguage(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index1])
 	} else if record[index2] != "" {
 		record = append(record, record[index2])
+	} else {
+		record = append(record, "")
 	}
 
+	return record
+}
+
+func mergeLinkedAgent(record []string, columnIndices map[string]int) []string {
+	fields := map[string]string{
+		"dc.creator":                           "cre",
+		"dc.contributor":                       "ctb",
+		"dc.publisher":                         "pbl",
+		"mods_name_photographer_namePart_ms":   "pht",
+		"mods_name_thesis_advisor_namePart_ms": "ths",
+	}
+	agents := []string{}
+	for field, relator := range fields {
+		index, _ := columnIndices[field]
+		if strings.TrimSpace(record[index]) == "" {
+			continue
+		}
+
+		values := strings.Split(record[index], ";")
+		for _, agent := range values {
+			agents = append(agents, fmt.Sprintf("relators:%s:person:%s", relator, strings.TrimSpace(agent)))
+		}
+	}
+
+	record = append(record, strings.Join(agents, "|"))
 	return record
 }
 

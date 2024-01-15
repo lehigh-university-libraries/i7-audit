@@ -86,16 +86,113 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_subjects_name")
 		case "mods_name_creator_affiliation_institution_mt":
 			updatedHeader = append(updatedHeader, "field_affiliated_institution")
-		case "mods_name_addressee_namePart_ms":
-			updatedHeader = append(updatedHeader, "")
-		case "mods_name_creator_description_ms":
-			updatedHeader = append(updatedHeader, "")
 		case "mods_name_creator_affiliation_email_ss":
 			updatedHeader = append(updatedHeader, "field_creator_email")
-		case "mods_name_creator_namePart_ms":
-			updatedHeader = append(updatedHeader, "")
-		case "mods_name_personal_author_namePart_ms":
-			updatedHeader = append(updatedHeader, "")
+
+		case "RELS_EXT_embargo-expiry-notification-date_literal_s":
+			updatedHeader = append(updatedHeader, columnName)
+		case "RELS_EXT_embargo-expiry-notification-date_literal_ss":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.coverage":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.date":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.format":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.identifier":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.language":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.publisher":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.relation":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.rights":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.source":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.subject":
+			updatedHeader = append(updatedHeader, columnName)
+		case "dc.type":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_accessCondition_use_and_reproduction_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_genre_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_genre_valueURI_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_identifier_call-number_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_identifier_oclc_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_identifier_reference_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_identifier_uri_displayLabel_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_identifier_uri_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_language_languageTerm_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_location_physicalLocation_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_note_capture_device_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_note_category_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_note_ppi_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_note_staff_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_dateCaptured_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_dateCreated_mdt":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_dateOther_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_encoding_iso8601_keyDate_yes_dateIssued_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_point_end_dateOther_mdt":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_point_start_dateOther_mdt":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_publisher_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_type_season_dateOther_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_originInfo_type_year_dateOther_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_part_detail_issue_number_s":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_part_detail_issue_number_ss":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_part_detail_volume_number_s":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_part_detail_volume_number_ss":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_physicalDescription_digitalOrigin_mt":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_physicalDescription_extent_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_physicalDescription_form_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_physicalDescription_form_valueURI_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_physicalDescription_internetMediaType_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_relatedItem_host_titleInfo_title_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_relatedItem_original_titleInfo_title_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_subject_authority_naf_geographic_ss":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_subject_geographic_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_subject_topic_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_typeOfResource_ms":
+			updatedHeader = append(updatedHeader, columnName)
+		case "mods_typeOfResource_ss":
+			updatedHeader = append(updatedHeader, columnName)
 		default:
 			updatedHeader = append(updatedHeader, columnName)
 		}

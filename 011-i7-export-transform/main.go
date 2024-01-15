@@ -31,6 +31,9 @@ var (
 		// field_description
 		"mods_abstract_mt",
 		"dc.description",
+		// field_resource_type
+		"mods_typeOfResource_ms",
+		"mods_typeOfResource_ss",
 		// ignored
 		"ID",
 		"file",
@@ -189,10 +192,6 @@ func main() {
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_subject_topic_ms":
 			updatedHeader = append(updatedHeader, columnName)
-		case "mods_typeOfResource_ms":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_typeOfResource_ss":
-			updatedHeader = append(updatedHeader, columnName)
 		default:
 			updatedHeader = append(updatedHeader, columnName)
 		}
@@ -204,6 +203,7 @@ func main() {
 		"field_member_of",
 		"title",
 		"field_description",
+		"field_resource_type",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -259,6 +259,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord := mergeMemberOf(record, columnIndices)
 	newRecord = mergeTitle(newRecord, columnIndices)
 	newRecord = mergeDescription(newRecord, columnIndices)
+	newRecord = mergeType(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -312,6 +313,18 @@ func mergeTitle(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index2])
 	} else if record[index3] != "" {
 		record = append(record, record[index3])
+	}
+
+	return record
+}
+
+func mergeType(record []string, columnIndices map[string]int) []string {
+	index1, _ := columnIndices["mods_typeOfResource_ss"]
+	index2, _ := columnIndices["mods_typeOfResource_ms"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
 	}
 
 	return record

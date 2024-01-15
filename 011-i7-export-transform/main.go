@@ -48,6 +48,9 @@ var (
 		"mods_subject_authority_naf_geographic_ss",
 		"mods_subject_geographic_ms",
 		"dc.coverage",
+		// field_subject
+		"mods_subject_topic_ms",
+		"dc.subject",
 		// ignored
 		"ID",
 		"file",
@@ -121,8 +124,6 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_relation")
 		case "dc.source":
 			updatedHeader = append(updatedHeader, "field_source")
-		case "dc.subject":
-			updatedHeader = append(updatedHeader, columnName)
 		case "mods_genre_ms":
 			updatedHeader = append(updatedHeader, "field_genre")
 		case "mods_genre_valueURI_ms":
@@ -177,8 +178,6 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_host")
 		case "mods_relatedItem_original_titleInfo_title_ms":
 			updatedHeader = append(updatedHeader, "field_original_title")
-		case "mods_subject_topic_ms":
-			updatedHeader = append(updatedHeader, "field_subject")
 		default:
 			updatedHeader = append(updatedHeader, columnName)
 		}
@@ -196,6 +195,7 @@ func main() {
 		"field_rights",
 		"field_edtf_date_created",
 		"field_geographic_subject",
+		"field_subject",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -257,6 +257,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord = mergeRights(newRecord, columnIndices)
 	newRecord = mergeDateCreated(newRecord, columnIndices)
 	newRecord = mergeGeographicSubject(newRecord, columnIndices)
+	newRecord = mergeTopicalSubject(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -387,7 +388,29 @@ func mergeGeographicSubject(record []string, columnIndices map[string]int) []str
 
 		values := strings.Split(record[index], ";")
 		for _, subject := range values {
-			subjects = append(subjects, fmt.Sprintf("relators:%s:person:%s", vocabulary, strings.TrimSpace(subject)))
+			subjects = append(subjects, fmt.Sprintf("%s:%s", vocabulary, strings.TrimSpace(subject)))
+		}
+	}
+
+	record = append(record, strings.Join(subjects, "|"))
+	return record
+}
+
+func mergeTopicalSubject(record []string, columnIndices map[string]int) []string {
+	fields := []string{
+		"mods_subject_topic_ms",
+		"dc.subject",
+	}
+	subjects := []string{}
+	for _, field := range fields {
+		index, _ := columnIndices[field]
+		if strings.TrimSpace(record[index]) == "" {
+			continue
+		}
+
+		values := strings.Split(record[index], ";")
+		for _, subject := range values {
+			subjects = append(subjects, strings.TrimSpace(subject))
 		}
 	}
 

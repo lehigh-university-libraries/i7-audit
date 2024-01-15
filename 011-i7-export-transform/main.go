@@ -498,6 +498,8 @@ func mergeMemberOf(record []string, columnIndices map[string]int) []string {
 		record = append(record, record[index3])
 	} else if record[index4] != "" {
 		record = append(record, record[index4])
+	} else {
+		record = append(record, "info:fedora/null")
 	}
 
 	memberOfStringToEntityId(record, columnIndices, "field_member_of")

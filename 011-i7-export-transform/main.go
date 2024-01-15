@@ -562,6 +562,11 @@ func pid2nid(url string) (int, error) {
 		return 0, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		redirectCache[url] = 322431
+		return redirectCache[url], nil
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		log.Fatalf("Unable to find node ID for parent %s", url)
 	}

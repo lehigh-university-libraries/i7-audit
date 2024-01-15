@@ -32,8 +32,12 @@ var (
 		"mods_abstract_mt",
 		"dc.description",
 		// field_resource_type
+		"dc.type",
 		"mods_typeOfResource_ms",
 		"mods_typeOfResource_ss",
+		// field_language
+		"dc.language",
+		"mods_language_languageTerm_ms",
 		// ignored
 		"ID",
 		"file",
@@ -91,7 +95,6 @@ func main() {
 			updatedHeader = append(updatedHeader, "field_affiliated_institution")
 		case "mods_name_creator_affiliation_email_ss":
 			updatedHeader = append(updatedHeader, "field_creator_email")
-
 		case "RELS_EXT_embargo-expiry-notification-date_literal_s":
 			updatedHeader = append(updatedHeader, columnName)
 		case "RELS_EXT_embargo-expiry-notification-date_literal_ss":
@@ -104,8 +107,6 @@ func main() {
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.identifier":
 			updatedHeader = append(updatedHeader, "field_identifier")
-		case "dc.language":
-			updatedHeader = append(updatedHeader, columnName)
 		case "dc.publisher":
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.relation":
@@ -116,26 +117,22 @@ func main() {
 			updatedHeader = append(updatedHeader, columnName)
 		case "dc.subject":
 			updatedHeader = append(updatedHeader, columnName)
-		case "dc.type":
-			updatedHeader = append(updatedHeader, columnName)
 		case "mods_accessCondition_use_and_reproduction_ms":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_genre_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_genre")
 		case "mods_genre_valueURI_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_genre_uri")
 		case "mods_identifier_call-number_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_call_number")
 		case "mods_identifier_oclc_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_oclc_number")
 		case "mods_identifier_reference_ms":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_identifier_uri_displayLabel_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_uri_identifier.title")
 		case "mods_identifier_uri_ms":
-			updatedHeader = append(updatedHeader, columnName)
-		case "mods_language_languageTerm_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_uri_identifier.uri")
 		case "mods_location_physicalLocation_ms":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_note_capture_device_ms":
@@ -175,11 +172,11 @@ func main() {
 		case "mods_physicalDescription_digitalOrigin_mt":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_physicalDescription_extent_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_extent")
 		case "mods_physicalDescription_form_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_physical_description")
 		case "mods_physicalDescription_form_valueURI_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_physical_description_uri")
 		case "mods_physicalDescription_internetMediaType_ms":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_relatedItem_host_titleInfo_title_ms":
@@ -189,9 +186,9 @@ func main() {
 		case "mods_subject_authority_naf_geographic_ss":
 			updatedHeader = append(updatedHeader, columnName)
 		case "mods_subject_geographic_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_geographic_subject")
 		case "mods_subject_topic_ms":
-			updatedHeader = append(updatedHeader, columnName)
+			updatedHeader = append(updatedHeader, "field_subject")
 		default:
 			updatedHeader = append(updatedHeader, columnName)
 		}
@@ -204,6 +201,7 @@ func main() {
 		"title",
 		"field_description",
 		"field_resource_type",
+		"field_language",
 	}
 	for _, newColumn := range newColumns {
 		updatedHeader = append(updatedHeader, newColumn)
@@ -260,6 +258,7 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 	newRecord = mergeTitle(newRecord, columnIndices)
 	newRecord = mergeDescription(newRecord, columnIndices)
 	newRecord = mergeType(newRecord, columnIndices)
+	newRecord = mergeLanguage(newRecord, columnIndices)
 
 	// remove the columns we've merged into a single new column
 	hiddenIndices := []int{}
@@ -319,8 +318,23 @@ func mergeTitle(record []string, columnIndices map[string]int) []string {
 }
 
 func mergeType(record []string, columnIndices map[string]int) []string {
-	index1, _ := columnIndices["mods_typeOfResource_ss"]
-	index2, _ := columnIndices["mods_typeOfResource_ms"]
+	index1, _ := columnIndices["dc.type"]
+	index2, _ := columnIndices["mods_typeOfResource_ss"]
+	index3, _ := columnIndices["mods_typeOfResource_ms"]
+	if record[index1] != "" {
+		record = append(record, record[index1])
+	} else if record[index2] != "" {
+		record = append(record, record[index2])
+	} else if record[index3] != "" {
+		record = append(record, record[index3])
+	}
+
+	return record
+}
+
+func mergeLanguage(record []string, columnIndices map[string]int) []string {
+	index1, _ := columnIndices["dc.language"]
+	index2, _ := columnIndices["mods_language_languageTerm_ms"]
 	if record[index1] != "" {
 		record = append(record, record[index1])
 	} else if record[index2] != "" {

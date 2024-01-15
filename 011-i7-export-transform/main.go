@@ -168,7 +168,7 @@ func main() {
 		case "mods_originInfo_point_start_dateOther_mdt":
 			updatedHeader = append(updatedHeader, "field_start_date")
 		case "mods_originInfo_type_season_dateOther_ms":
-			updatedHeader = append(updatedHeader, "field_date_other")
+			updatedHeader = append(updatedHeader, "field_date_season")
 		case "mods_originInfo_type_year_dateOther_ms":
 			updatedHeader = append(updatedHeader, "field_date_other")
 		case "mods_part_detail_issue_number_s":

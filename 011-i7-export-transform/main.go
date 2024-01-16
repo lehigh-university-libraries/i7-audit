@@ -238,6 +238,7 @@ func main() {
 		if pids[record[0]] {
 			continue
 		}
+
 		pids[record[0]] = true
 
 		transformedRecord := transformColumns(record, columnIndices)
@@ -283,6 +284,11 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 		hiddenIndices = append(hiddenIndices, index)
 	}
 	transformedRecord := []string{}
+	singleValueFields := []string{
+		"title",
+		"field_description",
+		"mods_location_physicalLocation_ms",
+	}
 	for k, cell := range newRecord {
 		if intInSlice(k, hiddenIndices) {
 			continue
@@ -294,6 +300,20 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 		cell = strings.ReplaceAll(cell, "\\,", ",")
 		cell = strings.TrimSpace(cell)
 
+		if strings.Contains(cell, "; ") && !strInSlice(field, singleValueFields) {
+			values := strings.Split(cell, ",")
+			newValues := map[string]bool{}
+			for _, v := range values {
+				v = strings.TrimSpace(v)
+				newValues[v] = true
+			}
+
+			newCell := []string{}
+			for v, _ := range newValues {
+				newCell = append(newCell, v)
+			}
+			cell = strings.Join(newCell, "|")
+		}
 		// remove comma separated values from date fields
 		if strings.Contains(field, "date") {
 			values := strings.Split(cell, ",")

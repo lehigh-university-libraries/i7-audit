@@ -296,9 +296,9 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 		}
 
 		field := getFieldName(columnIndices, k)
+		cell = strings.ReplaceAll(cell, "\\,", "<<comma>>")
 
 		if field == "mods_subject_name_personal_namePart_ms" && cell != "" {
-			cell = strings.ReplaceAll(cell, "\\,", "<<comma>>")
 			values := strings.Split(cell, ",")
 			newCell := []string{}
 			for _, v := range values {
@@ -310,8 +310,6 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 
 			cell = strings.Join(newCell, "|")
 		}
-		// remove solr's escaped commas
-		cell = strings.ReplaceAll(cell, "\\,", ",")
 		cell = strings.TrimSpace(cell)
 
 		if strings.Contains(cell, "; ") && !strInSlice(field, singleValueFields) {
@@ -343,6 +341,8 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 			}
 			cell = strings.Join(dates, "|")
 		}
+
+		cell = strings.ReplaceAll(cell, "<<comma>>", ",")
 
 		transformedRecord = append(transformedRecord, cell)
 	}
@@ -522,8 +522,7 @@ func mergeLinkedAgent(record []string, columnIndices map[string]int) []string {
 
 		values := strings.Split(record[index], ";")
 		for _, agent := range values {
-			agent = strings.ReplaceAll(agent, "\\,", "<<comma>>")
-			agent = strings.ReplaceAll(agent, " and ", ",")
+			cell = strings.ReplaceAll(cell, "\\,", "<<comma>>")
 			agent = strings.ReplaceAll(agent, "(Creator)", "")
 			agent = strings.ReplaceAll(agent, "(Repository)", "")
 			agent = strings.TrimSpace(agent)

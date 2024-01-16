@@ -171,7 +171,7 @@ func main() {
 		case "mods_identifier_uri_displayLabel_ms":
 			updatedHeader = append(updatedHeader, "field_uri_identifier.title")
 		case "mods_identifier_uri_ms":
-			updatedHeader = append(updatedHeader, "field_uri_identifier.uri")
+			updatedHeader = append(updatedHeader, "field_uri_identifier")
 		case "mods_location_physicalLocation_ms":
 			updatedHeader = append(updatedHeader, "field_physical_location")
 		case "mods_name_corporate_department_namePart_ms":
@@ -485,7 +485,11 @@ func mergeGeographicSubject(record []string, columnIndices map[string]int) []str
 			continue
 		}
 
-		values := strings.Split(record[index], ";")
+		delimiter := ","
+		if strings.Contains(record[index], ";") {
+			delimiter = ";"
+		}
+		values := strings.Split(record[index], delimiter)
 		for _, subject := range values {
 			subject = fmt.Sprintf("%s:%s", vocabulary, strings.TrimSpace(subject))
 			subjects[subject] = true
@@ -504,7 +508,6 @@ func mergeGeographicSubject(record []string, columnIndices map[string]int) []str
 func mergeTopicalSubject(record []string, columnIndices map[string]int) []string {
 	fields := []string{
 		"mods_subject_topic_ms",
-		"dc.subject",
 	}
 	subjects := map[string]bool{}
 	for _, field := range fields {
@@ -512,8 +515,11 @@ func mergeTopicalSubject(record []string, columnIndices map[string]int) []string
 		if strings.TrimSpace(record[index]) == "" {
 			continue
 		}
-
-		values := strings.Split(record[index], ";")
+		delimiter := ","
+		if strings.Contains(record[index], ";") {
+			delimiter = ";"
+		}
+		values := strings.Split(record[index], delimiter)
 		for _, subject := range values {
 			subject = strings.TrimSpace(subject)
 			subjects[subject] = true

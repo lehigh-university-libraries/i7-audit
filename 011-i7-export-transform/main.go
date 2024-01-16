@@ -73,6 +73,30 @@ var (
 	agentTypes = map[string]string{}
 )
 
+func init() {
+	// prepopulate the agent types based on a CSV
+	// with two columns: string (i.e. agent) and its linked agent type
+	// i.e. person/corporate_body/family
+	file, err := os.Open("agents.csv")
+	if err != nil {
+		fmt.Println("Error opening CSV file:", err)
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	for {
+		record, err := reader.Read()
+		if err != nil {
+			break
+		}
+		if len(record) == 2 {
+			agentTypes[record[0]] = record[1]
+		}
+	}
+}
+
 func main() {
 	inputFilePath := "input.csv"
 	outputFilePath := "output.csv"

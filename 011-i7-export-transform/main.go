@@ -70,6 +70,7 @@ var (
 		// alias of dc.publisher
 		"mods_originInfo_publisher_ms",
 	}
+	agentTypes = map[string]string{}
 )
 
 func main() {
@@ -296,6 +297,19 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 
 		field := getFieldName(columnIndices, k)
 
+		if field == "mods_subject_name_personal_namePart_ms" && cell != "" {
+			cell = strings.ReplaceAll(cell, "\\,", "<<comma>>")
+			values := strings.Split(cell, ",")
+			newCell := []string{}
+			for _, v := range values {
+				v = strings.TrimSpace(v)
+				v = strings.ReplaceAll(v, "<<comma>>", ",")
+				cacheAgentType(v)
+				newCell = append(newCell, fmt.Sprintf("%s:%s", agentTypes[v], v))
+			}
+
+			cell = strings.Join(newCell, "|")
+		}
 		// remove solr's escaped commas
 		cell = strings.ReplaceAll(cell, "\\,", ",")
 		cell = strings.TrimSpace(cell)
@@ -508,8 +522,23 @@ func mergeLinkedAgent(record []string, columnIndices map[string]int) []string {
 
 		values := strings.Split(record[index], ";")
 		for _, agent := range values {
-			agent = fmt.Sprintf("relators:%s:person:%s", relator, strings.TrimSpace(agent))
-			agents[agent] = true
+			agent = strings.ReplaceAll(agent, "\\,", "<<comma>>")
+			agent = strings.ReplaceAll(agent, " and ", ",")
+			agent = strings.ReplaceAll(agent, "(Creator)", "")
+			agent = strings.ReplaceAll(agent, "(Repository)", "")
+			agent = strings.TrimSpace(agent)
+
+			values := strings.Split(agent, ",")
+			for _, v := range values {
+				if v == "" {
+					continue
+				}
+				v = strings.TrimSpace(v)
+				v = strings.ReplaceAll(v, "<<comma>>", ",")
+				cacheAgentType(v)
+				a := fmt.Sprintf("relators:%s:%s:%s", relator, agentTypes[v], strings.TrimSpace(v))
+				agents[a] = true
+			}
 		}
 	}
 
@@ -673,4 +702,28 @@ func getFieldName(m map[string]int, i int) string {
 		}
 	}
 	return ""
+}
+
+func cacheAgentType(v string) {
+	_, exists := agentTypes[v]
+	if !exists {
+		fmt.Printf("Enter your choice for %s (corporate_body [c], family [f], or person [p]):\n", v)
+		var input string
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			fmt.Println("Error reading input:", err)
+			os.Exit(1)
+		}
+
+		input = strings.ToLower(input)
+
+		switch input {
+		case "c":
+			agentTypes[v] = "corporate_body"
+		case "f":
+			agentTypes[v] = "family"
+		default:
+			agentTypes[v] = "person"
+		}
+	}
 }

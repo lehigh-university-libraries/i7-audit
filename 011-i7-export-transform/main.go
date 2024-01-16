@@ -522,7 +522,7 @@ func mergeLinkedAgent(record []string, columnIndices map[string]int) []string {
 
 		values := strings.Split(record[index], ";")
 		for _, agent := range values {
-			cell = strings.ReplaceAll(cell, "\\,", "<<comma>>")
+			agent = strings.ReplaceAll(agent, "\\,", "<<comma>>")
 			agent = strings.ReplaceAll(agent, "(Creator)", "")
 			agent = strings.ReplaceAll(agent, "(Repository)", "")
 			agent = strings.TrimSpace(agent)

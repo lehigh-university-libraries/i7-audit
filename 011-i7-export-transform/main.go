@@ -224,6 +224,7 @@ func main() {
 		columnIndices[name] = i
 	}
 
+	pids := map[string]bool{}
 	for {
 		record, err := csvReader.Read()
 		if err == io.EOF {
@@ -233,6 +234,11 @@ func main() {
 			fmt.Println("Error reading CSV:", err)
 			return
 		}
+
+		if pids[record[0]] {
+			continue
+		}
+		pids[record[0]] = true
 
 		transformedRecord := transformColumns(record, columnIndices)
 
@@ -282,8 +288,28 @@ func transformColumns(record []string, columnIndices map[string]int) []string {
 			continue
 		}
 
+		field := getFieldName(columnIndices, k)
+
 		// remove solr's escaped commas
 		cell = strings.ReplaceAll(cell, "\\,", ",")
+		cell = strings.TrimSpace(cell)
+
+		// remove comma separated values from date fields
+		if strings.Contains(field, "date") {
+			values := strings.Split(cell, ",")
+			newValues := map[string]bool{}
+			for _, v := range values {
+				v = strings.TrimSpace(v)
+				newValues[v] = true
+			}
+
+			dates := []string{}
+			for date, _ := range newValues {
+				dates = append(dates, date)
+			}
+			cell = strings.Join(dates, "|")
+		}
+
 		transformedRecord = append(transformedRecord, cell)
 	}
 
@@ -618,4 +644,13 @@ func strStartsWith(str string, prefixes []string) bool {
 		}
 	}
 	return false
+}
+
+func getFieldName(m map[string]int, i int) string {
+	for k, v := range m {
+		if i == v {
+			return k
+		}
+	}
+	return ""
 }

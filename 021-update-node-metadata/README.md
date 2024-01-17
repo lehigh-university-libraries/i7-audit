@@ -22,3 +22,25 @@ SELECT entity_id, pid from _i7_pids i7
 LEFT JOIN node__field_pid i2 ON i2.field_pid_value = i7.pid
 WHERE i2.field_pid_value IS NOT NULL;
 ```
+
+Create a SQL command to update the node metadata with the i7 content
+
+```
+go run main.go
+```
+
+Run the SQL!
+
+Next, we'll want to do the same with the media, but we can base that off the node data already loaded.
+
+```
+UPDATE media_field_data mfd
+INNER JOIN media__field_media_of mo ON mfd.mid = mo.entity_id
+INNER JOIN node_field_data n ON n.nid = mo.field_media_of_target_id
+SET mfd.created = n.created, mfd.changed = n.changed, mfd.uid = n.uid;
+
+UPDATE media_field_revision mfd
+INNER JOIN media__field_media_of mo ON mfd.mid = mo.entity_id
+INNER JOIN node_field_data n ON n.nid = mo.field_media_of_target_id
+SET mfd.created = n.created, mfd.changed = n.changed, mfd.uid = n.uid;
+```

@@ -80,3 +80,9 @@ Put the output into a single doc
 ```
 jq . transform/*.json > all.json
 ```
+
+Get a list of PIDs
+
+```
+jq -r '.response.docs[].PID' output/*.json |grep -Ev '^(ir|fedoraislandora)' > pids_decoded.csv
+```

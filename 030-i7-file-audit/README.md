@@ -25,3 +25,13 @@ SELECT field_pid_value AS pid, f.sha1 FROM media__field_media_use mu
   WHERE field_media_use_target_id = 16
   ORDER BY field_pid_value
 ```
+
+
+Find any differences between i7 and i2 sha1's
+
+```
+git add sha1s.tsv
+git commit -m "i7 sha1's"
+# put results of SQL in sha1s.tsv
+git diff --unified=0 -w |grep -E "^\+"
+```

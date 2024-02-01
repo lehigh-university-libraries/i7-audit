@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 type Mods struct {
@@ -88,7 +91,9 @@ func main() {
 
 func modsMatch(m1, m2 Mods) bool {
 	for i, titleInfo := range m1.TitleInfo {
-		if i >= len(m2.TitleInfo) || titleInfo.Title != m2.TitleInfo[i].Title {
+		t1 := normalize(titleInfo.Title)
+		t2 := normalize(m2.TitleInfo[i].Title)
+		if i >= len(m2.TitleInfo) || !areStringsEqualIgnoringSpecialChars(t1, t2) {
 			return false
 		}
 	}
@@ -100,6 +105,60 @@ func modsMatch(m1, m2 Mods) bool {
 			}
 		}
 	*/
+
+	return true
+}
+
+func normalize(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+
+	// replace all double spaces with a single space
+	pattern := regexp.MustCompile(`\s+`)
+	s = pattern.ReplaceAllString(s, " ")
+
+	return strings.TrimSpace(s)
+}
+
+func isAlphanumeric(r rune) bool {
+	if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		return true
+	}
+
+	if (r >= '\u0030' && r <= '\u1FFF') || unicode.In(r, unicode.Mark, unicode.Sk, unicode.Lm) {
+		return true
+	}
+
+	return false
+}
+
+func areStringsEqualIgnoringSpecialChars(s1, s2 string) bool {
+	// Compare the strings while ignoring characters that are not alphanumeric.
+	i, j := 0, 0
+	for i < len(s1) && j < len(s2) {
+		r1, size1 := utf8.DecodeRuneInString(s1[i:])
+		r2, size2 := utf8.DecodeRuneInString(s2[j:])
+		if isAlphanumeric(r1) && isAlphanumeric(r2) {
+			if r1 != r2 {
+				return false
+			}
+		}
+		i += size1
+		j += size2
+	}
+
+	// Check if any remaining characters are alphanumeric.
+	for i < len(s1) {
+		if isAlphanumeric(rune(s1[i])) {
+			return false
+		}
+		i++
+	}
+	for j < len(s2) {
+		if isAlphanumeric(rune(s2[j])) {
+			return false
+		}
+		j++
+	}
 
 	return true
 }

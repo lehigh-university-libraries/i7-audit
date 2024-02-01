@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -30,6 +31,38 @@ type Name struct {
 	// Include other sub-elements if necessary
 }
 
+var (
+	pids = map[string]string{}
+)
+
+func init() {
+	cacheCsv(pids, "pids.csv")
+}
+
+func cacheCsv(m map[string]string, f string) {
+	file, err := os.Open(f)
+	if err != nil {
+		fmt.Println("Error opening CSV file:", err)
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	// skip header
+	reader.Read()
+
+	for {
+		record, err := reader.Read()
+		if err != nil {
+			break
+		}
+		if len(record) == 2 {
+			m[record[1]] = record[0]
+		}
+	}
+}
+
 func main() {
 	dir := os.Getenv("DIR")
 	if dir == "" {
@@ -42,7 +75,19 @@ func main() {
 		return
 	}
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	file, err := os.Create("titles.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	writer := csv.NewWriter(file)
+	data := []string{"node_id", "title"}
+	err = writer.Write(data)
+	if err != nil {
+		panic(err)
+	}
+
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("Error accessing %s: %v\n", path, err)
 			return err
@@ -75,8 +120,20 @@ func main() {
 			var i7, i2 Mods
 			xml.Unmarshal(i7Mods, &i7)
 			xml.Unmarshal(i2Mods, &i2)
-			if !modsMatch(i7, i2) {
-				return fmt.Errorf("MODS not identical for %s: %s\n\n================\n\n%s", pid, string(i7Mods), string(i2Mods))
+
+			if ok, _, value := modsMatch(i7, i2); !ok {
+				row := []string{
+					pids[pid],
+					value,
+				}
+				err = writer.Write(row)
+				if err != nil {
+					panic(err)
+				}
+				writer.Flush()
+				if err := writer.Error(); err != nil {
+					panic(err)
+				}
 			}
 		}
 
@@ -89,12 +146,12 @@ func main() {
 	}
 }
 
-func modsMatch(m1, m2 Mods) bool {
+func modsMatch(m1, m2 Mods) (bool, string, string) {
 	for i, titleInfo := range m1.TitleInfo {
 		t1 := normalize(titleInfo.Title)
 		t2 := normalize(m2.TitleInfo[i].Title)
 		if i >= len(m2.TitleInfo) || !areStringsEqualIgnoringSpecialChars(t1, t2) {
-			return false
+			return false, "title", titleInfo.Title
 		}
 	}
 
@@ -106,7 +163,7 @@ func modsMatch(m1, m2 Mods) bool {
 		}
 	*/
 
-	return true
+	return true, "", ""
 }
 
 func normalize(s string) string {

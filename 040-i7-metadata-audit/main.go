@@ -23,12 +23,12 @@ type Mods struct {
 }
 
 type TitleInfo struct {
+	Type  string `xml:"type,attr"`
 	Title string `xml:"title"`
 }
 
 type Name struct {
 	NamePart string `xml:"namePart"`
-	// Include other sub-elements if necessary
 }
 
 var (
@@ -149,9 +149,17 @@ func main() {
 
 func modsMatch(m1, m2 Mods) (bool, string, string) {
 	for i, titleInfo := range m1.TitleInfo {
+		if titleInfo.Type != "" {
+			log.Println(titleInfo.Type)
+			continue
+		}
+		if i >= len(m2.TitleInfo) {
+			continue
+		}
+
 		t1 := normalize(titleInfo.Title)
 		t2 := normalize(m2.TitleInfo[i].Title)
-		if i >= len(m2.TitleInfo) || !areStringsEqualIgnoringSpecialChars(t1, t2) {
+		if !areStringsEqualIgnoringSpecialChars(t1, t2) {
 			return false, "title", titleInfo.Title
 		}
 	}

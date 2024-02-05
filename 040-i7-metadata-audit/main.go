@@ -81,7 +81,7 @@ func main() {
 	}
 	defer file.Close()
 	writer := csv.NewWriter(file)
-	data := []string{"node_id", "title"}
+	data := []string{"node_id", "title", "field_full_title"}
 	err = writer.Write(data)
 	if err != nil {
 		panic(err)
@@ -124,6 +124,7 @@ func main() {
 			if ok, _, value := modsMatch(i7, i2); !ok {
 				row := []string{
 					pids[pid],
+					value,
 					value,
 				}
 				err = writer.Write(row)

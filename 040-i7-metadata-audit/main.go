@@ -19,12 +19,18 @@ type Mods struct {
 	XMLName   xml.Name    `xml:"mods"`
 	TitleInfo []TitleInfo `xml:"titleInfo"`
 	Names     []Name      `xml:"name"`
+	Abstract  Abstract    `xml:"abstract"`
 	// Add other fields as per your XML structure
 }
 
 type TitleInfo struct {
 	Type  string `xml:"type,attr"`
 	Title string `xml:"title"`
+}
+
+type Abstract struct {
+	Type  string `xml:"type,attr"`
+	Value string `xml:",innerxml"`
 }
 
 type Name struct {
@@ -75,13 +81,13 @@ func main() {
 		return
 	}
 
-	file, err := os.Create("titles.csv")
+	file, err := os.Create("abstracts.csv")
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 	writer := csv.NewWriter(file)
-	data := []string{"node_id", "title", "field_full_title"}
+	data := []string{"node_id", "field_description", "id"}
 	err = writer.Write(data)
 	if err != nil {
 		panic(err)
@@ -125,7 +131,7 @@ func main() {
 				row := []string{
 					pids[pid],
 					value,
-					value,
+					pid,
 				}
 				err = writer.Write(row)
 				if err != nil {
@@ -148,22 +154,38 @@ func main() {
 }
 
 func modsMatch(m1, m2 Mods) (bool, string, string) {
-	for i, titleInfo := range m1.TitleInfo {
-		if titleInfo.Type != "" {
-			log.Println(titleInfo.Type)
-			continue
-		}
-		if i >= len(m2.TitleInfo) {
-			continue
-		}
+	/*
+		for i, titleInfo := range m1.TitleInfo {
+			if titleInfo.Type != "" {
+				log.Println(titleInfo.Type)
+				continue
+			}
+			if i >= len(m2.TitleInfo) {
+				continue
+			}
 
-		t1 := normalize(titleInfo.Title)
-		t2 := normalize(m2.TitleInfo[i].Title)
-		if !areStringsEqualIgnoringSpecialChars(t1, t2) {
-			return false, "title", titleInfo.Title
+			t1 := normalize(titleInfo.Title)
+			t2 := normalize(m2.TitleInfo[i].Title)
+			if !areStringsEqualIgnoringSpecialChars(t1, t2) {
+				return false, "title", titleInfo.Title
+			}
 		}
+	*/
+	abstractI7 := m1.Abstract
+	abstractI2 := m2.Abstract
+	if abstractI7.Value == "" && abstractI2.Value == "" {
+		return true, "", ""
 	}
 
+	if abstractI7.Type != "" {
+		fmt.Println(abstractI7.Type)
+	}
+
+	a1 := normalize(abstractI7.Value)
+	a2 := normalize(abstractI2.Value)
+	if !areStringsEqualIgnoringSpecialChars(a1, a2) {
+		return false, "field_description", abstractI7.Value
+	}
 	/*
 		for i, name := range m1.Names {
 			if i >= len(m2.Names) || name.NamePart != m2.Names[i].NamePart {

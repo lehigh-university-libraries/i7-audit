@@ -16,11 +16,11 @@ import (
 )
 
 type Mods struct {
-	XMLName   xml.Name    `xml:"mods"`
-	TitleInfo []TitleInfo `xml:"titleInfo"`
-	Names     []Name      `xml:"name"`
-	Abstract  Abstract    `xml:"abstract"`
-	// Add other fields as per your XML structure
+	XMLName         xml.Name    `xml:"mods"`
+	TitleInfo       []TitleInfo `xml:"titleInfo"`
+	Names           []Name      `xml:"name"`
+	Abstract        Element     `xml:"abstract"`
+	AccessCondition Element     `xml:"accessCondition"`
 }
 
 type TitleInfo struct {
@@ -28,7 +28,7 @@ type TitleInfo struct {
 	Title string `xml:"title"`
 }
 
-type Abstract struct {
+type Element struct {
 	Type  string `xml:"type,attr"`
 	Value string `xml:",innerxml"`
 }
@@ -81,13 +81,13 @@ func main() {
 		return
 	}
 
-	file, err := os.Create("abstracts.csv")
+	file, err := os.Create("accessConditions.csv")
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 	writer := csv.NewWriter(file)
-	data := []string{"node_id", "field_description", "id"}
+	data := []string{"node_id", "field_rights"}
 	err = writer.Write(data)
 	if err != nil {
 		panic(err)
@@ -131,7 +131,6 @@ func main() {
 				row := []string{
 					pids[pid],
 					value,
-					pid,
 				}
 				err = writer.Write(row)
 				if err != nil {
@@ -170,21 +169,37 @@ func modsMatch(m1, m2 Mods) (bool, string, string) {
 				return false, "title", titleInfo.Title
 			}
 		}
+
+		abstractI7 := m1.Abstract
+		abstractI2 := m2.Abstract
+		if abstractI7.Value == "" && abstractI2.Value == "" {
+			return true, "", ""
+		}
+
+		if abstractI7.Type != "" {
+			fmt.Println(abstractI7.Type)
+		}
+
+		a1 := normalize(abstractI7.Value)
+		a2 := normalize(abstractI2.Value)
+		if !areStringsEqualIgnoringSpecialChars(a1, a2) {
+			return false, "field_description", abstractI7.Value
+		}
 	*/
-	abstractI7 := m1.Abstract
-	abstractI2 := m2.Abstract
-	if abstractI7.Value == "" && abstractI2.Value == "" {
+	accessConditionI7 := m1.AccessCondition
+	accessConditionI2 := m2.AccessCondition
+	if accessConditionI7.Value == "" && accessConditionI2.Value == "" {
 		return true, "", ""
 	}
 
-	if abstractI7.Type != "" {
-		fmt.Println(abstractI7.Type)
+	if accessConditionI7.Type != "" {
+		fmt.Println(accessConditionI7.Type)
 	}
 
-	a1 := normalize(abstractI7.Value)
-	a2 := normalize(abstractI2.Value)
+	a1 := normalize(accessConditionI7.Value)
+	a2 := normalize(accessConditionI2.Value)
 	if !areStringsEqualIgnoringSpecialChars(a1, a2) {
-		return false, "field_description", abstractI7.Value
+		return false, "field_rights", accessConditionI7.Value
 	}
 	/*
 		for i, name := range m1.Names {

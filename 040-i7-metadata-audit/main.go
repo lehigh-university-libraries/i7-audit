@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
@@ -21,6 +22,7 @@ type Mods struct {
 	Names           []Name      `xml:"name"`
 	Abstract        Element     `xml:"abstract"`
 	AccessCondition Element     `xml:"accessCondition"`
+	Classification  Element     `xml:"classification"`
 }
 
 type TitleInfo struct {
@@ -29,8 +31,9 @@ type TitleInfo struct {
 }
 
 type Element struct {
-	Type  string `xml:"type,attr"`
-	Value string `xml:",innerxml"`
+	Authority string `xml:"authority,attr"`
+	Type      string `xml:"type,attr"`
+	Value     string `xml:",innerxml"`
 }
 
 type Name struct {
@@ -38,7 +41,12 @@ type Name struct {
 }
 
 var (
-	pids = map[string]string{}
+	pids           = map[string]string{}
+	fieldsToAccess = map[string]string{
+		"field_description":    "Abstract",
+		"field_rights":         "AccessConditions",
+		"field_classification": "Classification",
+	}
 )
 
 func init() {
@@ -81,26 +89,33 @@ func main() {
 		return
 	}
 
-	file, err := os.Create("accessConditions.csv")
+	file, err := os.Create("update.csv")
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 	writer := csv.NewWriter(file)
-	data := []string{"node_id", "field_rights"}
+	data := []string{"node_id"}
+	for field, _ := range fieldsToAccess {
+		data = append(data, field)
+	}
 	err = writer.Write(data)
 	if err != nil {
 		panic(err)
 	}
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if info.Name() == ".keep" {
+			return nil
+		}
+
 		if err != nil {
 			fmt.Printf("Error accessing %s: %v\n", path, err)
 			return err
 		}
 		if !info.IsDir() {
 			// read the i7 MODS we downloaded locally
-			pid := fmt.Sprintf("%s:%s", filepath.Base(filepath.Dir(path)), strings.ReplaceAll(info.Name(), ".xml", ""))
+			pid := strings.ReplaceAll(info.Name(), ".xml", "")
 			i7Mods, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("Error reading file: %v", err)
@@ -127,11 +142,8 @@ func main() {
 			xml.Unmarshal(i7Mods, &i7)
 			xml.Unmarshal(i2Mods, &i2)
 
-			if ok, _, value := modsMatch(i7, i2); !ok {
-				row := []string{
-					pids[pid],
-					value,
-				}
+			row := modsMatch(pid, i7, i2)
+			if len(row) > 0 {
 				err = writer.Write(row)
 				if err != nil {
 					panic(err)
@@ -152,54 +164,36 @@ func main() {
 	}
 }
 
-func modsMatch(m1, m2 Mods) (bool, string, string) {
-	/*
-		for i, titleInfo := range m1.TitleInfo {
-			if titleInfo.Type != "" {
-				log.Println(titleInfo.Type)
-				continue
-			}
-			if i >= len(m2.TitleInfo) {
-				continue
-			}
-
-			t1 := normalize(titleInfo.Title)
-			t2 := normalize(m2.TitleInfo[i].Title)
-			if !areStringsEqualIgnoringSpecialChars(t1, t2) {
-				return false, "title", titleInfo.Title
-			}
-		}
-
-		abstractI7 := m1.Abstract
-		abstractI2 := m2.Abstract
-		if abstractI7.Value == "" && abstractI2.Value == "" {
-			return true, "", ""
-		}
-
-		if abstractI7.Type != "" {
-			fmt.Println(abstractI7.Type)
-		}
-
-		a1 := normalize(abstractI7.Value)
-		a2 := normalize(abstractI2.Value)
-		if !areStringsEqualIgnoringSpecialChars(a1, a2) {
-			return false, "field_description", abstractI7.Value
-		}
-	*/
-	accessConditionI7 := m1.AccessCondition
-	accessConditionI2 := m2.AccessCondition
-	if accessConditionI7.Value == "" && accessConditionI2.Value == "" {
-		return true, "", ""
+func modsMatch(pid string, m1, m2 Mods) []string {
+	row := []string{
+		pids[pid],
 	}
+	i7 := reflect.ValueOf(m1)
+	i2 := reflect.ValueOf(m2)
+	mismatch := false
+	for drupalField, fieldName := range fieldsToAccess {
+		if !reflect.Indirect(i7).FieldByName(fieldName).IsValid() {
+			row = append(row, "")
+			continue
+		}
 
-	if accessConditionI7.Type != "" {
-		fmt.Println(accessConditionI7.Type)
-	}
+		i7Element := reflect.Indirect(i7).FieldByName(fieldName).Interface().(Element)
+		i2Element := reflect.Indirect(i2).FieldByName(fieldName).Interface().(Element)
 
-	a1 := normalize(accessConditionI7.Value)
-	a2 := normalize(accessConditionI2.Value)
-	if !areStringsEqualIgnoringSpecialChars(a1, a2) {
-		return false, "field_rights", accessConditionI7.Value
+		if i7Element.Value == "" && i2Element.Value == "" {
+			row = append(row, i2Element.Value)
+			continue
+		}
+
+		v1 := normalize(i7Element.Value)
+		v2 := normalize(i2Element.Value)
+		if !areStringsEqualIgnoringSpecialChars(v1, v2) {
+			row = append(row, i7Element.Value)
+			fmt.Println(drupalField, i7Element.Value, i2Element.Value)
+			mismatch = true
+			continue
+		}
+		row = append(row, i2Element.Value)
 	}
 	/*
 		for i, name := range m1.Names {
@@ -209,7 +203,11 @@ func modsMatch(m1, m2 Mods) (bool, string, string) {
 		}
 	*/
 
-	return true, "", ""
+	if mismatch {
+		return row
+	}
+
+	return []string{}
 }
 
 func normalize(s string) string {

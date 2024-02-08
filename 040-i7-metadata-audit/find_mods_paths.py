@@ -50,5 +50,5 @@ def process_xml_folders(folders):
             samples = ', '.join(list(data['values'])[:20])  # Show up to 20 samples for attributes
             print(f"{path}\t{samples}\t{data['occurrences']}")
 
-folders = ['output/xml/digitalcollections', 'output/xml/preserve']
+folders = ['../001-extract-mods/xml/digitalcollections', '../001-extract-mods/xml/preserve']
 process_xml_folders(folders)

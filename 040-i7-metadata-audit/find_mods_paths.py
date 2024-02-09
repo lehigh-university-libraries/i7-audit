@@ -7,22 +7,25 @@ def print_elements(element, parent_path="", seen_paths={}, element_samples={}):
     
     # Handle element sample value
     if current_path not in element_samples:
-        element_samples[current_path] = element.text.strip() if element.text and element.text.strip() else "N/A"
+        if element.text and element.text.strip():
+            element_samples[current_path] = element.text.strip()
 
     # Update occurrences for elements
     if current_path in seen_paths:
-        seen_paths[current_path]['occurrences'] += 1
+        if element.text and element.text.strip():
+            seen_paths[current_path]['occurrences'] += 1
     else:
         seen_paths[current_path] = {'values': set(), 'occurrences': 1}
 
     # Handle attributes
-    for attr, value in element.attrib.items():
-        attr_path = f"{current_path}/@{attr}"
-        if attr_path not in seen_paths:
-            seen_paths[attr_path] = {'values': set([value]), 'occurrences': 1}
-        else:
-            seen_paths[attr_path]['values'].add(value)
-            seen_paths[attr_path]['occurrences'] += 1
+    if element.text and element.text.strip():
+        for attr, value in element.attrib.items():
+            attr_path = f"{current_path}/@{attr}"
+            if attr_path not in seen_paths:
+                seen_paths[attr_path] = {'values': set([value]), 'occurrences': 1}
+            else:
+                seen_paths[attr_path]['values'].add(value)
+                seen_paths[attr_path]['occurrences'] += 1
 
     for child in element:
         print_elements(child, current_path, seen_paths, element_samples)

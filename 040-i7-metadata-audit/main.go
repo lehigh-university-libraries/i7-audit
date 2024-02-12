@@ -63,12 +63,13 @@ type Name struct {
 
 var (
 	pids           = map[string]string{}
+	header         = []string{}
 	fieldsToAccess = map[string]string{
-		"field_description":          "Abstract",
-		"field_rights":               "AccessConditions",
-		"field_classification":       "Classification",
-		"field_genre":                "Genre",
-		"field_identifier":           "Identifier",
+		"field_description":    "Abstract",
+		"field_rights":         "AccessCondition",
+		"field_classification": "Classification",
+		"field_genre":          "Genre",
+		//	"field_identifier":           "Identifier",
 		"field_language":             "Language",
 		"field_physical_location":    "PhysicalLocation",
 		"field_note":                 "Note",
@@ -88,10 +89,10 @@ var (
 		"field_table_of_contents":    "TableOfContents",
 		"field_physical_description": "PhysicalDescription",
 		"field_resource_type":        "ResourceType",
-		"field_subject":              "Subject",
-		"field_geographic_subject":   "SubjectGeographic",
-		"field_subjects_name":        "SubjectName",
-		"title":                      "TitleInfo",
+		//"field_subject":              "Subject",
+		//"field_geographic_subject":   "SubjectGeographic",
+		//"field_subjects_name":        "SubjectName",
+		//"title":                      "TitleInfo",
 	}
 )
 
@@ -141,13 +142,13 @@ func main() {
 	}
 	defer file.Close()
 	writer := csv.NewWriter(file)
-	data := []string{"node_id"}
+	header = append(header, "node_id")
 	for field, _ := range fieldsToAccess {
-		data = append(data, field)
+		header = append(header, field)
 	}
-	err = writer.Write(data)
-	if err != nil {
-		panic(err)
+	if err := writer.Write(header); err != nil {
+		fmt.Println("Error:", err)
+		return
 	}
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -190,7 +191,11 @@ func main() {
 
 			row := modsMatch(pid, i7, i2)
 			if len(row) > 0 {
-				err = writer.Write(row)
+				var record []string
+				for _, key := range header {
+					record = append(record, row[key])
+				}
+				err = writer.Write(record)
 				if err != nil {
 					panic(err)
 				}
@@ -210,50 +215,46 @@ func main() {
 	}
 }
 
-func modsMatch(pid string, m1, m2 Mods) []string {
-	row := []string{
-		pids[pid],
+func modsMatch(pid string, m1, m2 Mods) map[string]string {
+	row := map[string]string{
+		"node_id": pids[pid],
 	}
 	i7 := reflect.ValueOf(m1)
 	i2 := reflect.ValueOf(m2)
 	mismatch := false
 	for drupalField, fieldName := range fieldsToAccess {
-		if !reflect.Indirect(i7).FieldByName(fieldName).IsValid() {
-			row = append(row, "")
-			continue
-		}
-
 		i7Element := reflect.Indirect(i7).FieldByName(fieldName).Interface().(Element)
 		i2Element := reflect.Indirect(i2).FieldByName(fieldName).Interface().(Element)
-
 		if i7Element.Value == "" && i2Element.Value == "" {
-			row = append(row, i2Element.Value)
+			row[drupalField] = ""
 			continue
 		}
 
 		v1 := normalize(i7Element.Value)
 		v2 := normalize(i2Element.Value)
 		if !areStringsEqualIgnoringSpecialChars(v1, v2) {
-			row = append(row, i7Element.Value)
-			fmt.Println(drupalField, i7Element.Value, i2Element.Value)
+			row[drupalField] = i7Element.Value
+			fmt.Println(drupalField, v1, v2)
 			mismatch = true
 			continue
 		}
-		row = append(row, i2Element.Value)
-	}
-	/*
-		for i, name := range m1.Names {
-			if i >= len(m2.Names) || name.NamePart != m2.Names[i].NamePart {
-				return false
-			}
-		}
-	*/
 
+		if drupalField == "field_linked_agent" {
+			/*
+				for i, name := range m1.Names {
+					if i >= len(m2.Names) || name.NamePart != m2.Names[i].NamePart {
+						return false
+					}
+				}
+			*/
+		}
+		row[drupalField] = ""
+	}
 	if mismatch {
 		return row
 	}
 
-	return []string{}
+	return map[string]string{}
 }
 
 func normalize(s string) string {
@@ -263,7 +264,24 @@ func normalize(s string) string {
 	pattern := regexp.MustCompile(`\s+`)
 	s = pattern.ReplaceAllString(s, " ")
 
-	return strings.TrimSpace(s)
+	s = strings.ToLower(s)
+	s = strings.TrimSpace(s)
+	if isDateString(s) {
+		s = removeTimeFromDate(s)
+	}
+
+	return s
+}
+
+func isDateString(str string) bool {
+	dateRegex := `\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}Z`
+	match, _ := regexp.MatchString(dateRegex, str)
+	return match
+}
+
+func removeTimeFromDate(str string) string {
+	parts := strings.Split(str, "t")
+	return parts[0]
 }
 
 func isAlphanumeric(r rune) bool {

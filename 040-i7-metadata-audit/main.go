@@ -17,17 +17,38 @@ import (
 )
 
 type Mods struct {
-	XMLName         xml.Name    `xml:"mods"`
-	TitleInfo       []TitleInfo `xml:"titleInfo"`
-	Names           []Name      `xml:"name"`
-	Abstract        Element     `xml:"abstract"`
-	AccessCondition Element     `xml:"accessCondition"`
-	Classification  Element     `xml:"classification"`
-}
+	XMLName             xml.Name  `xml:"mods"`
+	TitleInfo           []Element `xml:"titleInfo>title"`
+	Names               []Name    `xml:"name"`
+	Abstract            Element   `xml:"abstract"`
+	AccessCondition     Element   `xml:"accessCondition"`
+	Classification      Element   `xml:"classification"`
+	Genre               Element   `xml:"genre"`
+	Identifier          []Element `xml:"identifier"`
+	Language            Element   `xml:"language>languageTerm"`
+	PhysicalLocation    Element   `xml:"location>physicalLocation"`
+	Note                Element   `xml:"note"`
+	DateCaptured        Element   `xml:"originInfo>dateCaptured"`
+	DateCreated         Element   `xml:"originInfo>dateCreated"`
+	DateIssued          Element   `xml:"originInfo>dateIssued"`
+	DateOther           Element   `xml:"originInfo>dateOther"`
+	DateValid           Element   `xml:"originInfo>dateValid"`
+	Edition             Element   `xml:"originInfo>edition"`
+	Extent              Element   `xml:"physicalDescription>extent"`
+	Form                Element   `xml:"physicalDescription>form"`
+	InternetMediaType   Element   `xml:"physicalDescription>internetMediaType"`
+	Issuance            Element   `xml:"originInfo>issuance"`
+	Origin              Element   `xml:"physicalDescription>digitalOrigin"`
+	Place               Element   `xml:"originInfo>place>placeTerm"`
+	PhysicalDescription Element   `xml:"physicalDescription>note"`
+	RecordOrigin        Element   `xml:"recordInfo>recordOrigin"`
+	ResourceType        Element   `xml:"typeOfResource"`
+	Subject             []Element `xml:"subject>topic"`
+	SubjectGeographic   []Element `xml:"subject>geographic"`
+	SubjectName         []Element `xml:"mods>subject>name>namePart"`
+	TableOfContents     Element   `xml:"tableOfContents"`
 
-type TitleInfo struct {
-	Type  string `xml:"type,attr"`
-	Title string `xml:"title"`
+	// mods/originInfo/publisher -> field_linked_agent:relators:pbl
 }
 
 type Element struct {
@@ -43,9 +64,34 @@ type Name struct {
 var (
 	pids           = map[string]string{}
 	fieldsToAccess = map[string]string{
-		"field_description":    "Abstract",
-		"field_rights":         "AccessConditions",
-		"field_classification": "Classification",
+		"field_description":          "Abstract",
+		"field_rights":               "AccessConditions",
+		"field_classification":       "Classification",
+		"field_genre":                "Genre",
+		"field_identifier":           "Identifier",
+		"field_language":             "Language",
+		"field_physical_location":    "PhysicalLocation",
+		"field_note":                 "Note",
+		"field_date_captured":        "DateCaptured",
+		"field_edtf_date_created":    "DateCreated",
+		"field_edtf_date_issued":     "DateIssued",
+		"field_date_other":           "DateOther",
+		"field_date_valid":           "DateValid",
+		"field_edition":              "Edition",
+		"field_extent":               "Extent",
+		"field_physical_form":        "Form",
+		"field_media_type":           "InternetMediaType",
+		"field_mode_of_issuance":     "Issuance",
+		"field_digital_origin":       "Origin",
+		"field_place_published":      "Place",
+		"field_record_origin":        "RecordOrigin",
+		"field_table_of_contents":    "TableOfContents",
+		"field_physical_description": "PhysicalDescription",
+		"field_resource_type":        "ResourceType",
+		"field_subject":              "Subject",
+		"field_geographic_subject":   "SubjectGeographic",
+		"field_subjects_name":        "SubjectName",
+		"title":                      "TitleInfo",
 	}
 )
 

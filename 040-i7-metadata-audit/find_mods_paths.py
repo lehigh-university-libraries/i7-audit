@@ -6,26 +6,22 @@ def print_elements(element, parent_path="", seen_paths={}, element_samples={}):
     current_path = f"{parent_path}/{tag}" if parent_path else tag
     
     # Handle element sample value
-    if current_path not in element_samples:
-        if element.text and element.text.strip():
-            element_samples[current_path] = element.text.strip()
+    if current_path not in element_samples and element.text and element.text.strip():
+        element_samples[current_path] = element.text.strip()
 
     # Update occurrences for elements
     if current_path in seen_paths:
-        if element.text and element.text.strip():
-            seen_paths[current_path]['occurrences'] += 1
+        seen_paths[current_path]['occurrences'] += 1
     else:
-        seen_paths[current_path] = {'values': set(), 'occurrences': 1}
+        seen_paths[current_path] = {'occurrences': 1}
 
     # Handle attributes
-    if element.text and element.text.strip():
-        for attr, value in element.attrib.items():
-            attr_path = f"{current_path}/@{attr}"
-            if attr_path not in seen_paths:
-                seen_paths[attr_path] = {'values': set([value]), 'occurrences': 1}
-            else:
-                seen_paths[attr_path]['values'].add(value)
-                seen_paths[attr_path]['occurrences'] += 1
+    for attr, value in element.attrib.items():
+        attr_path = f"{current_path}/@{attr}/{value}"
+        if attr_path not in seen_paths:
+            seen_paths[attr_path] = {'occurrences': 1}
+        else:
+            seen_paths[attr_path]['occurrences'] += 1
 
     for child in element:
         print_elements(child, current_path, seen_paths, element_samples)
@@ -46,12 +42,11 @@ def process_xml_folders(folders):
 
     # After processing all files, print paths, sample values, and occurrences
     for path, data in seen_paths.items():
-        if path in element_samples:  # It's an element
-            sample_value = element_samples[path]
+        if '/@' in path:  # It's an attribute value
+            print(f"{path}\t{data['occurrences']}")
+        else:  # It's an element
+            sample_value = element_samples.get(path, "N/A")
             print(f"{path}\t{sample_value}\t{data['occurrences']}")
-        else:  # It's an attribute
-            samples = ', '.join(list(data['values'])[:20])  # Show up to 20 samples for attributes
-            print(f"{path}\t{samples}\t{data['occurrences']}")
 
 folders = ['../001-extract-mods/xml/digitalcollections', '../001-extract-mods/xml/preserve']
 process_xml_folders(folders)

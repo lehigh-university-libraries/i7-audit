@@ -36,15 +36,16 @@ def print_elements(element, parent_path="", seen_paths={}, element_samples={}, f
         attr_path = f"{current_path}/@{attr}/{value}"
         file_occurrences[attr_path] = file_occurrences.get(attr_path, 0) + 1
         if attr_path not in seen_paths:
-            seen_paths[attr_path] = {
-                'occurrences': 1,
-                'max_per_file': 0,
-                'max_file': '',
-            }
-            element_samples[attr_path] = {
-                'value': '',
-                'filename': current_filename,
-            }
+            if element.text and element.text.strip():
+                seen_paths[attr_path] = {
+                    'occurrences': 1,
+                    'max_per_file': 0,
+                    'max_file': '',
+                }
+                element_samples[attr_path] = {
+                    'value': element.text.strip(),
+                    'filename': current_filename,
+                }
         else:
             seen_paths[attr_path]['occurrences'] += 1
 

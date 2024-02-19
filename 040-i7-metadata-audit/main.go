@@ -64,11 +64,11 @@ var (
 	pids           = map[string]string{}
 	header         = []string{}
 	fieldsToAccess = map[string]string{
-		"field_description":    "Abstract",
-		"field_rights":         "AccessCondition",
-		"field_classification": "Classification",
-		"field_genre":          "Genre",
-		//	"field_identifier":           "Identifier",
+		"field_description":          "Abstract",
+		"field_rights":               "AccessCondition",
+		"field_classification":       "Classification",
+		"field_genre":                "Genre",
+		"field_identifier":           "Identifier",
 		"field_language":             "Language",
 		"field_physical_location":    "PhysicalLocation",
 		"field_note":                 "Note",
@@ -169,7 +169,7 @@ func main() {
 
 			// get the MODS output in i2
 			url := fmt.Sprintf("https://islandora.dev/islandora/object/%s?_format=mods", pid)
-			log.Println("Comparing", path, " against ", url)
+			//log.Println("Comparing", path, " against ", url)
 			resp, err := http.Get(url)
 			if err != nil {
 				return fmt.Errorf("Error making GET request: %v", err)
@@ -187,7 +187,7 @@ func main() {
 			var i7, i2 Mods
 			xml.Unmarshal(i7Mods, &i7)
 			xml.Unmarshal(i2Mods, &i2)
-
+			log.Println(pid)
 			row := modsMatch(pid, i7, i2)
 			if len(row) > 0 {
 				var record []string
@@ -227,6 +227,12 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 		i7Elements := reflect.Indirect(i7).FieldByName(fieldName).Interface().([]Element)
 		i2Elements := reflect.Indirect(i2).FieldByName(fieldName).Interface().([]Element)
 		for k, e1 := range i7Elements {
+			if len(i2Elements) < k+1 {
+				row[drupalField] = append(row[drupalField], e1.Value)
+				mismatch = true
+				continue
+			}
+
 			e2 := i2Elements[k]
 			if e1.Value == "" && e2.Value == "" {
 				row[drupalField] = append(row[drupalField], "")
@@ -343,17 +349,32 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		switch t := token.(type) {
 		case xml.StartElement:
 			switch t.Name.Local {
-			case "identifier":
-				var id Element
-				if err := d.DecodeElement(&id, &t); err != nil {
+			case "mods":
+				var alias modAlias
+				if err := d.DecodeElement(&alias, &t); err != nil {
 					return err
 				}
-				if id.Type == "oclc" {
-					// Append only if the type is "oclc"
-					m.Identifier = append(m.Identifier, id)
+				*m = Mods(alias)
+			case "abstract", "dateOther", "identifier", "note":
+				var e Element
+				if err := d.DecodeElement(&e, &t); err != nil {
+					return err
+				}
+				if e.Type != "" {
+					e.Value = fmt.Sprintf("attr0:%s:%s", e.Type, e.Value)
+				}
+				switch t.Name.Local {
+				case "abstract":
+					m.Abstract = append(m.Abstract, e)
+				case "dateOther":
+					m.DateOther = append(m.DateOther, e)
+				case "identifier":
+					m.Identifier = append(m.Identifier, e)
+				case "note":
+					m.Note = append(m.Note, e)
 				}
 			default:
-				if err := d.Skip(); err != nil {
+				if err := d.DecodeElement(&m, &t); err != nil {
 					return err
 				}
 			}

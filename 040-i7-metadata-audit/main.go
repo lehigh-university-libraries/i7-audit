@@ -20,34 +20,33 @@ type Mods struct {
 	XMLName             xml.Name  `xml:"mods"`
 	TitleInfo           []Element `xml:"titleInfo>title"`
 	Names               []Name    `xml:"name"`
-	Abstract            Element   `xml:"abstract"`
-	AccessCondition     Element   `xml:"accessCondition"`
-	Classification      Element   `xml:"classification"`
-	Genre               Element   `xml:"genre"`
+	Abstract            []Element `xml:"abstract"`
+	AccessCondition     []Element `xml:"accessCondition"`
+	Classification      []Element `xml:"classification"`
+	Genre               []Element `xml:"genre"`
 	Identifier          []Element `xml:"identifier"`
-	Language            Element   `xml:"language>languageTerm"`
-	PhysicalLocation    Element   `xml:"location>physicalLocation"`
-	Note                Element   `xml:"note"`
-	DateCaptured        Element   `xml:"originInfo>dateCaptured"`
-	DateCreated         Element   `xml:"originInfo>dateCreated"`
-	DateIssued          Element   `xml:"originInfo>dateIssued"`
-	DateOther           Element   `xml:"originInfo>dateOther"`
-	DateValid           Element   `xml:"originInfo>dateValid"`
-	Edition             Element   `xml:"originInfo>edition"`
-	Extent              Element   `xml:"physicalDescription>extent"`
-	Form                Element   `xml:"physicalDescription>form"`
-	InternetMediaType   Element   `xml:"physicalDescription>internetMediaType"`
-	Issuance            Element   `xml:"originInfo>issuance"`
-	Origin              Element   `xml:"physicalDescription>digitalOrigin"`
-	Place               Element   `xml:"originInfo>place>placeTerm"`
-	PhysicalDescription Element   `xml:"physicalDescription>note"`
-	RecordOrigin        Element   `xml:"recordInfo>recordOrigin"`
-	ResourceType        Element   `xml:"typeOfResource"`
+	Language            []Element `xml:"language>languageTerm"`
+	PhysicalLocation    []Element `xml:"location>physicalLocation"`
+	Note                []Element `xml:"note"`
+	DateCaptured        []Element `xml:"originInfo>dateCaptured"`
+	DateCreated         []Element `xml:"originInfo>dateCreated"`
+	DateIssued          []Element `xml:"originInfo>dateIssued"`
+	DateOther           []Element `xml:"originInfo>dateOther"`
+	DateValid           []Element `xml:"originInfo>dateValid"`
+	Edition             []Element `xml:"originInfo>edition"`
+	Extent              []Element `xml:"physicalDescription>extent"`
+	Form                []Element `xml:"physicalDescription>form"`
+	InternetMediaType   []Element `xml:"physicalDescription>internetMediaType"`
+	Issuance            []Element `xml:"originInfo>issuance"`
+	Origin              []Element `xml:"physicalDescription>digitalOrigin"`
+	Place               []Element `xml:"originInfo>place>placeTerm"`
+	PhysicalDescription []Element `xml:"physicalDescription>note"`
+	RecordOrigin        []Element `xml:"recordInfo>recordOrigin"`
+	ResourceType        []Element `xml:"typeOfResource"`
 	Subject             []Element `xml:"subject>topic"`
 	SubjectGeographic   []Element `xml:"subject>geographic"`
 	SubjectName         []Element `xml:"mods>subject>name>namePart"`
-	TableOfContents     Element   `xml:"tableOfContents"`
-
+	TableOfContents     []Element `xml:"tableOfContents"`
 	// mods/originInfo/publisher -> field_linked_agent:relators:pbl
 }
 
@@ -193,7 +192,8 @@ func main() {
 			if len(row) > 0 {
 				var record []string
 				for _, key := range header {
-					record = append(record, row[key])
+					cell := strings.Join(row[key], "|")
+					record = append(record, cell)
 				}
 				err = writer.Write(record)
 				if err != nil {
@@ -215,46 +215,50 @@ func main() {
 	}
 }
 
-func modsMatch(pid string, m1, m2 Mods) map[string]string {
-	row := map[string]string{
-		"node_id": pids[pid],
+func modsMatch(pid string, m1, m2 Mods) map[string][]string {
+	row := map[string][]string{
+		"node_id": []string{pids[pid]},
 	}
 	i7 := reflect.ValueOf(m1)
 	i2 := reflect.ValueOf(m2)
 	mismatch := false
 	for drupalField, fieldName := range fieldsToAccess {
-		i7Element := reflect.Indirect(i7).FieldByName(fieldName).Interface().(Element)
-		i2Element := reflect.Indirect(i2).FieldByName(fieldName).Interface().(Element)
-		if i7Element.Value == "" && i2Element.Value == "" {
-			row[drupalField] = ""
-			continue
-		}
+		row[drupalField] = []string{}
+		i7Elements := reflect.Indirect(i7).FieldByName(fieldName).Interface().([]Element)
+		i2Elements := reflect.Indirect(i2).FieldByName(fieldName).Interface().([]Element)
+		for k, e1 := range i7Elements {
+			e2 := i2Elements[k]
+			if e1.Value == "" && e2.Value == "" {
+				row[drupalField] = append(row[drupalField], "")
+				continue
+			}
 
-		v1 := normalize(i7Element.Value)
-		v2 := normalize(i2Element.Value)
-		if !areStringsEqualIgnoringSpecialChars(v1, v2) {
-			row[drupalField] = i7Element.Value
-			fmt.Println(drupalField, v1, v2)
-			mismatch = true
-			continue
-		}
+			v1 := normalize(e1.Value)
+			v2 := normalize(e2.Value)
+			if !areStringsEqualIgnoringSpecialChars(v1, v2) {
+				row[drupalField] = append(row[drupalField], e1.Value)
+				fmt.Println(drupalField, v1, v2)
+				mismatch = true
+				continue
+			}
 
-		if drupalField == "field_linked_agent" {
-			/*
-				for i, name := range m1.Names {
-					if i >= len(m2.Names) || name.NamePart != m2.Names[i].NamePart {
-						return false
+			if drupalField == "field_linked_agent" {
+				/*
+					for i, name := range m1.Names {
+						if i >= len(m2.Names) || name.NamePart != m2.Names[i].NamePart {
+							return false
+						}
 					}
-				}
-			*/
+				*/
+			}
+			row[drupalField] = append(row[drupalField], "")
 		}
-		row[drupalField] = ""
 	}
 	if mismatch {
 		return row
 	}
 
-	return map[string]string{}
+	return map[string][]string{}
 }
 
 func normalize(s string) string {
@@ -326,4 +330,37 @@ func areStringsEqualIgnoringSpecialChars(s1, s2 string) bool {
 	}
 
 	return true
+}
+
+func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	type modAlias Mods
+
+	for {
+		token, err := d.Token()
+		if err != nil {
+			return err
+		}
+		switch t := token.(type) {
+		case xml.StartElement:
+			switch t.Name.Local {
+			case "identifier":
+				var id Element
+				if err := d.DecodeElement(&id, &t); err != nil {
+					return err
+				}
+				if id.Type == "oclc" {
+					// Append only if the type is "oclc"
+					m.Identifier = append(m.Identifier, id)
+				}
+			default:
+				if err := d.Skip(); err != nil {
+					return err
+				}
+			}
+		case xml.EndElement:
+			if t == start.End() {
+				return nil
+			}
+		}
+	}
 }

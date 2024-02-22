@@ -19,7 +19,7 @@ import (
 type Mods struct {
 	XMLName             xml.Name  `xml:"mods"`
 	TitleInfo           []Element `xml:"titleInfo>title"`
-	Names               []Name    `xml:"name"`
+	Names               []Element `xml:"name"`
 	Abstract            []Element `xml:"abstract"`
 	AccessCondition     []Element `xml:"accessCondition"`
 	Classification      []Element `xml:"classification"`
@@ -42,6 +42,7 @@ type Mods struct {
 	Place               []Element `xml:"originInfo>place>placeTerm"`
 	PhysicalDescription []Element `xml:"physicalDescription>note"`
 	RecordOrigin        []Element `xml:"recordInfo>recordOrigin"`
+	RelatedItem         []Element `xml:"relatedItem"`
 	ResourceType        []Element `xml:"typeOfResource"`
 	Subject             []Element `xml:"subject>topic"`
 	SubjectGeographic   []Element `xml:"subject>geographic"`
@@ -51,13 +52,13 @@ type Mods struct {
 }
 
 type Element struct {
-	Authority string `xml:"authority,attr"`
-	Type      string `xml:"type,attr"`
-	Value     string `xml:",innerxml"`
-}
-
-type Name struct {
-	NamePart string `xml:"namePart"`
+	Authority  string `xml:"authority,attr"`
+	Type       string `xml:"type,attr"`
+	Value      string `xml:",innerxml"`
+	Identifier string `xml:"identifier"`
+	Number     string `xml:"part>detail>number"`
+	Title      string `xml:"titleInfo>title"`
+	NamePart   string `xml:"namePart"`
 }
 
 var (
@@ -88,10 +89,11 @@ var (
 		"field_table_of_contents":    "TableOfContents",
 		"field_physical_description": "PhysicalDescription",
 		"field_resource_type":        "ResourceType",
-		//"field_subject":              "Subject",
-		//"field_geographic_subject":   "SubjectGeographic",
-		//"field_subjects_name":        "SubjectName",
-		//"title":                      "TitleInfo",
+		"field_subject":              "Subject",
+		"field_geographic_subject":   "SubjectGeographic",
+		"field_subjects_name":        "SubjectName",
+		"field_linked_agent":         "Names",
+		"field_related_item":         "RelatedItem",
 	}
 )
 
@@ -169,7 +171,6 @@ func main() {
 
 			// get the MODS output in i2
 			url := fmt.Sprintf("https://islandora.dev/islandora/object/%s?_format=mods", pid)
-			//log.Println("Comparing", path, " against ", url)
 			resp, err := http.Get(url)
 			if err != nil {
 				return fmt.Errorf("Error making GET request: %v", err)
@@ -242,22 +243,10 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 			v1 := normalize(e1.Value)
 			v2 := normalize(e2.Value)
 			if !areStringsEqualIgnoringSpecialChars(v1, v2) {
-				row[drupalField] = append(row[drupalField], e1.Value)
 				fmt.Println(drupalField, v1, v2)
 				mismatch = true
-				continue
 			}
-
-			if drupalField == "field_linked_agent" {
-				/*
-					for i, name := range m1.Names {
-						if i >= len(m2.Names) || name.NamePart != m2.Names[i].NamePart {
-							return false
-						}
-					}
-				*/
-			}
-			row[drupalField] = append(row[drupalField], "")
+			row[drupalField] = append(row[drupalField], e1.Value)
 		}
 	}
 	if mismatch {
@@ -355,6 +344,21 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					return err
 				}
 				*m = Mods(alias)
+			case "relatedItem":
+				var e Element
+				if err := d.DecodeElement(&e, &t); err != nil {
+					return err
+				}
+				e.Value = fmt.Sprintf("title:%s:number:%s:identifier:%s", e.Title, e.Number, e.Identifier)
+				m.RelatedItem = append(m.RelatedItem, e)
+
+			case "name":
+				var e Element
+				if err := d.DecodeElement(&e, &t); err != nil {
+					return err
+				}
+				e.Value = e.NamePart
+				m.Names = append(m.Names, e)
 			case "abstract", "dateOther", "identifier", "note":
 				var e Element
 				if err := d.DecodeElement(&e, &t); err != nil {

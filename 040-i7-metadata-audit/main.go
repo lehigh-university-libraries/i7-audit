@@ -366,6 +366,19 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				e.Value = fmt.Sprintf("relators:pbl:corporate_body:%s", e.Value)
 				m.Names = append(m.Names, e)
+			case "geographic":
+				var e Element
+				if err := d.DecodeElement(&e, &t); err != nil {
+					return err
+				}
+				vid := "geo_location"
+				if e.Authority == "naf" {
+					vid = "geographic_naf"
+				} else if e.Authority == "local" {
+					vid = "geographic_local"
+				}
+				e.Value = fmt.Sprintf("%s:%s", vid, e.Value)
+				m.SubjectGeographic = append(m.SubjectGeographic, e)
 			case "abstract", "dateOther", "identifier", "note":
 				var e Element
 				if err := d.DecodeElement(&e, &t); err != nil {

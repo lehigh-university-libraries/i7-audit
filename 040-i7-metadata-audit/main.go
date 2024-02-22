@@ -48,7 +48,7 @@ type Mods struct {
 	SubjectGeographic   []Element `xml:"subject>geographic"`
 	SubjectName         []Element `xml:"mods>subject>name>namePart"`
 	TableOfContents     []Element `xml:"tableOfContents"`
-	// mods/originInfo/publisher -> field_linked_agent:relators:pbl
+	Publisher           []Element `xml:"originInfo>publisher"`
 }
 
 type Element struct {
@@ -357,7 +357,14 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
-				e.Value = e.NamePart
+				e.Value = fmt.Sprintf("relators:cre:person:%s", e.NamePart)
+				m.Names = append(m.Names, e)
+			case "publisher":
+				var e Element
+				if err := d.DecodeElement(&e, &t); err != nil {
+					return err
+				}
+				e.Value = fmt.Sprintf("relators:pbl:corporate_body:%s", e.Value)
 				m.Names = append(m.Names, e)
 			case "abstract", "dateOther", "identifier", "note":
 				var e Element

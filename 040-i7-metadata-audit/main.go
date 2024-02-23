@@ -76,12 +76,12 @@ type SubElement struct {
 }
 
 type HierarchicalGeographic struct {
-	City      string `xml:"city" json:"city"`
-	Continent string `xml:"continent" json:"continent"`
-	Country   string `xml:"country" json:"country"`
-	County    string `xml:"county" json:"county"`
-	State     string `xml:"state" json:"state"`
-	Territory string `xml:"territory" json:"territory"`
+	City      string `xml:"city" json:"city,omitempty"`
+	Continent string `xml:"continent" json:"continent,omitempty"`
+	Country   string `xml:"country" json:"country,omitempty"`
+	County    string `xml:"county" json:"county,omitempty"`
+	State     string `xml:"state" json:"state,omitempty"`
+	Territory string `xml:"territory" json:"territory,omitempty"`
 }
 
 var (
@@ -99,7 +99,6 @@ var (
 		"field_date_captured":            "DateCaptured",
 		"field_edtf_date_created":        "DateCreated",
 		"field_edtf_date_issued":         "DateIssued",
-		"field_date_other":               "DateOther",
 		"field_date_valid":               "DateValid",
 		"field_edition":                  "Edition",
 		"field_extent":                   "Extent",
@@ -404,6 +403,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					return err
 				}
 				if e.Topic != "" {
+					e.Value = e.Topic
 					if e.Authority == "lcsh" {
 						m.SubjectLcsh = append(m.SubjectLcsh, e)
 					} else if e.Authority != "" {

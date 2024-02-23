@@ -52,13 +52,14 @@ type Mods struct {
 }
 
 type Element struct {
-	Authority  string `xml:"authority,attr"`
-	Type       string `xml:"type,attr"`
-	Value      string `xml:",innerxml"`
-	Identifier string `xml:"identifier"`
-	Number     string `xml:"part>detail>number"`
-	Title      string `xml:"titleInfo>title"`
-	NamePart   string `xml:"namePart"`
+	Authority  string    `xml:"authority,attr"`
+	Type       string    `xml:"type,attr"`
+	Value      string    `xml:",innerxml"`
+	Identifier string    `xml:"identifier"`
+	Number     string    `xml:"part>detail>number"`
+	Title      string    `xml:"titleInfo>title"`
+	NamePart   string    `xml:"namePart"`
+	Role       []Element `xml:"role>roleTerm"`
 }
 
 var (
@@ -357,7 +358,14 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
-				e.Value = fmt.Sprintf("relators:cre:person:%s", e.NamePart)
+				relator := "cre"
+				for _, r := range e.Role {
+					if r.Type == "code" {
+						relator = r.Value
+						break
+					}
+				}
+				e.Value = fmt.Sprintf("relators:%s:person:%s", relator, e.NamePart)
 				m.Names = append(m.Names, e)
 			case "publisher":
 				var e Element

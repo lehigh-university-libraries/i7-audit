@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -17,84 +18,107 @@ import (
 )
 
 type Mods struct {
-	XMLName             xml.Name  `xml:"mods"`
-	TitleInfo           []Element `xml:"titleInfo>title"`
-	Names               []Element `xml:"name"`
-	Abstract            []Element `xml:"abstract"`
-	AccessCondition     []Element `xml:"accessCondition"`
-	Classification      []Element `xml:"classification"`
-	Genre               []Element `xml:"genre"`
-	Identifier          []Element `xml:"identifier"`
-	Language            []Element `xml:"language>languageTerm"`
-	PhysicalLocation    []Element `xml:"location>physicalLocation"`
-	Note                []Element `xml:"note"`
-	DateCaptured        []Element `xml:"originInfo>dateCaptured"`
-	DateCreated         []Element `xml:"originInfo>dateCreated"`
-	DateIssued          []Element `xml:"originInfo>dateIssued"`
-	DateOther           []Element `xml:"originInfo>dateOther"`
-	DateValid           []Element `xml:"originInfo>dateValid"`
-	Edition             []Element `xml:"originInfo>edition"`
-	Extent              []Element `xml:"physicalDescription>extent"`
-	Form                []Element `xml:"physicalDescription>form"`
-	InternetMediaType   []Element `xml:"physicalDescription>internetMediaType"`
-	Issuance            []Element `xml:"originInfo>issuance"`
-	Origin              []Element `xml:"physicalDescription>digitalOrigin"`
-	Place               []Element `xml:"originInfo>place>placeTerm"`
-	PhysicalDescription []Element `xml:"physicalDescription>note"`
-	RecordOrigin        []Element `xml:"recordInfo>recordOrigin"`
-	RelatedItem         []Element `xml:"relatedItem"`
-	ResourceType        []Element `xml:"typeOfResource"`
-	Subject             []Element `xml:"subject>topic"`
-	SubjectGeographic   []Element `xml:"subject>geographic"`
-	SubjectName         []Element `xml:"mods>subject>name>namePart"`
-	TableOfContents     []Element `xml:"tableOfContents"`
-	Publisher           []Element `xml:"originInfo>publisher"`
+	XMLName                       xml.Name  `xml:"mods"`
+	TitleInfo                     []Element `xml:"titleInfo>title"`
+	Names                         []Element `xml:"name"`
+	Abstract                      []Element `xml:"abstract"`
+	AccessCondition               []Element `xml:"accessCondition"`
+	Classification                []Element `xml:"classification"`
+	Genre                         []Element `xml:"genre"`
+	Identifier                    []Element `xml:"identifier"`
+	Language                      []Element `xml:"language>languageTerm"`
+	PhysicalLocation              []Element `xml:"location>physicalLocation"`
+	Note                          []Element `xml:"note"`
+	DateCaptured                  []Element `xml:"originInfo>dateCaptured"`
+	DateCreated                   []Element `xml:"originInfo>dateCreated"`
+	DateIssued                    []Element `xml:"originInfo>dateIssued"`
+	DateOther                     []Element `xml:"originInfo>dateOther"`
+	DateValid                     []Element `xml:"originInfo>dateValid"`
+	Edition                       []Element `xml:"originInfo>edition"`
+	Extent                        []Element `xml:"physicalDescription>extent"`
+	Form                          []Element `xml:"physicalDescription>form"`
+	InternetMediaType             []Element `xml:"physicalDescription>internetMediaType"`
+	Issuance                      []Element `xml:"originInfo>issuance"`
+	Origin                        []Element `xml:"physicalDescription>digitalOrigin"`
+	Place                         []Element `xml:"originInfo>place>placeTerm"`
+	PhysicalDescription           []Element `xml:"physicalDescription>note"`
+	RecordOrigin                  []Element `xml:"recordInfo>recordOrigin"`
+	RelatedItem                   []Element `xml:"relatedItem"`
+	ResourceType                  []Element `xml:"typeOfResource"`
+	Subject                       []Element `xml:"subject"`
+	TableOfContents               []Element `xml:"tableOfContents"`
+	Publisher                     []Element `xml:"originInfo>publisher"`
+	SubjectGeographic             []Element
+	SubjectGeographicHierarchical []Element
+	SubjectName                   []Element
+	SubjectLcsh                   []Element
 }
 
 type Element struct {
-	Authority  string    `xml:"authority,attr"`
-	Type       string    `xml:"type,attr"`
-	Value      string    `xml:",innerxml"`
-	Identifier string    `xml:"identifier"`
-	Number     string    `xml:"part>detail>number"`
-	Title      string    `xml:"titleInfo>title"`
-	NamePart   string    `xml:"namePart"`
-	Role       []Element `xml:"role>roleTerm"`
+	Authority              string                 `xml:"authority,attr"`
+	Type                   string                 `xml:"type,attr"`
+	Value                  string                 `xml:",innerxml"`
+	Identifier             string                 `xml:"identifier"`
+	Number                 string                 `xml:"part>detail>number"`
+	Title                  string                 `xml:"titleInfo>title"`
+	NamePart               string                 `xml:"namePart"`
+	Role                   []Element              `xml:"role>roleTerm"`
+	Geographic             SubElement             `xml:"geographic"`
+	SubjectName            string                 `xml:"name>namePart"`
+	Topic                  string                 `xml:"topic"`
+	HierarchicalGeographic HierarchicalGeographic `xml:"hierarchicalGeographic"`
+}
+
+type SubElement struct {
+	Authority string `xml:"authority,attr"`
+	Type      string `xml:"type,attr"`
+	Value     string `xml:",innerxml"`
+}
+
+type HierarchicalGeographic struct {
+	City      string `xml:"city" json:"city"`
+	Continent string `xml:"continent" json:"continent"`
+	Country   string `xml:"country" json:"country"`
+	County    string `xml:"county" json:"county"`
+	State     string `xml:"state" json:"state"`
+	Territory string `xml:"territory" json:"territory"`
 }
 
 var (
 	pids           = map[string]string{}
 	header         = []string{}
 	fieldsToAccess = map[string]string{
-		"field_description":          "Abstract",
-		"field_rights":               "AccessCondition",
-		"field_classification":       "Classification",
-		"field_genre":                "Genre",
-		"field_identifier":           "Identifier",
-		"field_language":             "Language",
-		"field_physical_location":    "PhysicalLocation",
-		"field_note":                 "Note",
-		"field_date_captured":        "DateCaptured",
-		"field_edtf_date_created":    "DateCreated",
-		"field_edtf_date_issued":     "DateIssued",
-		"field_date_other":           "DateOther",
-		"field_date_valid":           "DateValid",
-		"field_edition":              "Edition",
-		"field_extent":               "Extent",
-		"field_physical_form":        "Form",
-		"field_media_type":           "InternetMediaType",
-		"field_mode_of_issuance":     "Issuance",
-		"field_digital_origin":       "Origin",
-		"field_place_published":      "Place",
-		"field_record_origin":        "RecordOrigin",
-		"field_table_of_contents":    "TableOfContents",
-		"field_physical_description": "PhysicalDescription",
-		"field_resource_type":        "ResourceType",
-		"field_subject":              "Subject",
-		"field_geographic_subject":   "SubjectGeographic",
-		"field_subjects_name":        "SubjectName",
-		"field_linked_agent":         "Names",
-		"field_related_item":         "RelatedItem",
+		"field_description":              "Abstract",
+		"field_rights":                   "AccessCondition",
+		"field_classification":           "Classification",
+		"field_genre":                    "Genre",
+		"field_identifier":               "Identifier",
+		"field_language":                 "Language",
+		"field_physical_location":        "PhysicalLocation",
+		"field_note":                     "Note",
+		"field_date_captured":            "DateCaptured",
+		"field_edtf_date_created":        "DateCreated",
+		"field_edtf_date_issued":         "DateIssued",
+		"field_date_other":               "DateOther",
+		"field_date_valid":               "DateValid",
+		"field_edition":                  "Edition",
+		"field_extent":                   "Extent",
+		"field_physical_form":            "Form",
+		"field_media_type":               "InternetMediaType",
+		"field_mode_of_issuance":         "Issuance",
+		"field_digital_origin":           "Origin",
+		"field_place_published":          "Place",
+		"field_record_origin":            "RecordOrigin",
+		"field_table_of_contents":        "TableOfContents",
+		"field_physical_description":     "PhysicalDescription",
+		"field_resource_type":            "ResourceType",
+		"field_subject":                  "Subject",
+		"field_geographic_subject":       "SubjectGeographic",
+		"field_subjects_name":            "SubjectName",
+		"field_linked_agent":             "Names",
+		"field_related_item":             "RelatedItem",
+		"field_lcsh_topic":               "SubjectLcsh",
+		"field_subject_hierarchical_geo": "SubjectGeographicHierarchical",
 	}
 )
 
@@ -374,19 +398,42 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				e.Value = fmt.Sprintf("relators:pbl:corporate_body:%s", e.Value)
 				m.Names = append(m.Names, e)
-			case "geographic":
+			case "subject":
 				var e Element
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
-				vid := "geo_location"
-				if e.Authority == "naf" {
-					vid = "geographic_naf"
-				} else if e.Authority == "local" {
-					vid = "geographic_local"
+				if e.Topic != "" {
+					if e.Authority == "lcsh" {
+						m.SubjectLcsh = append(m.SubjectLcsh, e)
+					} else if e.Authority != "" {
+						log.Println(e.Authority)
+					} else {
+						m.Subject = append(m.Subject, e)
+					}
+				} else if e.Geographic.Value != "" {
+					vid := "geo_location"
+					if e.Geographic.Authority == "naf" {
+						vid = "geographic_naf"
+					} else if e.Geographic.Authority == "local" {
+						vid = "geographic_local"
+					}
+					e.Value = fmt.Sprintf("%s:%s", vid, e.Geographic.Value)
+					m.SubjectGeographic = append(m.SubjectGeographic, e)
+				} else if e.SubjectName != "" {
+					e.Value = e.SubjectName
+					m.SubjectName = append(m.SubjectName, e)
+				} else if !e.HierarchicalGeographic.Empty() {
+					e.Value, err = e.HierarchicalGeographic.Json()
+					if err != nil {
+						log.Println(e)
+						return fmt.Errorf("Failed to marshal hierarchical geographic as JSON")
+					}
+					m.SubjectGeographicHierarchical = append(m.SubjectGeographicHierarchical, e)
+				} else {
+					log.Println(e)
+					return fmt.Errorf("Didn't catch this subject")
 				}
-				e.Value = fmt.Sprintf("%s:%s", vid, e.Value)
-				m.SubjectGeographic = append(m.SubjectGeographic, e)
 			case "abstract", "dateOther", "identifier", "note":
 				var e Element
 				if err := d.DecodeElement(&e, &t); err != nil {
@@ -416,4 +463,18 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 			}
 		}
 	}
+}
+
+func (hg *HierarchicalGeographic) Empty() bool {
+	return hg.City == "" && hg.Continent == "" && hg.Country == "" && hg.County == "" && hg.State == "" && hg.Territory == ""
+}
+
+func (hg *HierarchicalGeographic) Json() (string, error) {
+	jsonData, err := json.Marshal(hg)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return "", err
+	}
+
+	return string(jsonData), nil
 }

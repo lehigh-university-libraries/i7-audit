@@ -35,19 +35,19 @@ type Mods struct {
 	DateOther                     []Element `xml:"originInfo>dateOther"`
 	DateValid                     []Element `xml:"originInfo>dateValid"`
 	Edition                       []Element `xml:"originInfo>edition"`
+	Issuance                      []Element `xml:"originInfo>issuance"`
+	Place                         []Element `xml:"originInfo>place>placeTerm"`
+	Publisher                     []Element `xml:"originInfo>publisher"`
 	Extent                        []Element `xml:"physicalDescription>extent"`
 	Form                          []Element `xml:"physicalDescription>form"`
 	InternetMediaType             []Element `xml:"physicalDescription>internetMediaType"`
-	Issuance                      []Element `xml:"originInfo>issuance"`
 	Origin                        []Element `xml:"physicalDescription>digitalOrigin"`
-	Place                         []Element `xml:"originInfo>place>placeTerm"`
 	PhysicalDescription           []Element `xml:"physicalDescription>note"`
 	RecordOrigin                  []Element `xml:"recordInfo>recordOrigin"`
 	RelatedItem                   []Element `xml:"relatedItem"`
 	ResourceType                  []Element `xml:"typeOfResource"`
 	Subject                       []Element `xml:"subject"`
 	TableOfContents               []Element `xml:"tableOfContents"`
-	Publisher                     []Element `xml:"originInfo>publisher"`
 	SubjectGeographic             []Element
 	SubjectGeographicHierarchical []Element
 	SubjectName                   []Element
@@ -67,6 +67,23 @@ type Element struct {
 	SubjectName            string                 `xml:"name>namePart"`
 	Topic                  string                 `xml:"topic"`
 	HierarchicalGeographic HierarchicalGeographic `xml:"hierarchicalGeographic"`
+	Note                   string                 `xml:"note"`
+	Language               string                 `xml:"languageTerm"`
+	DateCaptured           string                 `xml:"dateCaptured"`
+	DateCreated            string                 `xml:"dateCreated"`
+	DateIssued             string                 `xml:"dateIssued"`
+	DateOther              string                 `xml:"dateOther"`
+	DateValid              string                 `xml:"dateValid"`
+	Edition                string                 `xml:"edition"`
+	Issuance               string                 `xml:"issuance"`
+	Place                  string                 `xml:"place>placeTerm"`
+	Publisher              string                 `xml:"publisher"`
+	Extent                 string                 `xml:"extent"`
+	Form                   string                 `xml:"form"`
+	InternetMediaType      string                 `xml:"internetMediaType"`
+	Origin                 string                 `xml:"digitalOrigin"`
+	RecordOrigin           string                 `xml:"recordOrigin"`
+	PhysicalLocation       string                 `xml:"physicalLocation"`
 }
 
 type SubElement struct {
@@ -414,13 +431,6 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				e.Value = fmt.Sprintf("relators:%s:person:%s", relator, e.NamePart)
 				m.Names = append(m.Names, e)
-			case "publisher":
-				var e Element
-				if err := d.DecodeElement(&e, &t); err != nil {
-					return err
-				}
-				e.Value = fmt.Sprintf("relators:pbl:corporate_body:%s", e.Value)
-				m.Names = append(m.Names, e)
 			case "subject":
 				var e Element
 				if err := d.DecodeElement(&e, &t); err != nil {
@@ -458,7 +468,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					log.Println(e)
 					return fmt.Errorf("Didn't catch this subject")
 				}
-			case "abstract", "dateOther", "identifier", "note":
+			case "abstract", "identifier", "note":
 				var e Element
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
@@ -478,17 +488,103 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				switch t.Name.Local {
 				case "abstract":
 					m.Abstract = append(m.Abstract, e)
-				case "dateOther":
-					m.DateOther = append(m.DateOther, e)
 				case "identifier":
 					m.Identifier = append(m.Identifier, e)
 				case "note":
 					m.Note = append(m.Note, e)
 				}
 			default:
-				if err := d.DecodeElement(&m, &t); err != nil {
+				e := Element{}
+				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
+				switch t.Name.Local {
+				case "accessCondition":
+					m.AccessCondition = append(m.AccessCondition, e)
+				case "classification":
+					m.Classification = append(m.Classification, e)
+				case "genre":
+					m.Genre = append(m.Genre, e)
+				case "language":
+					if e.Language != "" {
+						e.Value = e.Language
+						m.Language = append(m.Language, e)
+					}
+				case "location":
+					if e.PhysicalLocation != "" {
+						e.Value = e.PhysicalLocation
+						m.PhysicalLocation = append(m.PhysicalLocation, e)
+					}
+				case "originInfo":
+					if e.DateCaptured != "" {
+						e.Value = e.DateCaptured
+						m.DateCaptured = append(m.DateCaptured, e)
+					}
+					if e.DateCreated != "" {
+						e.Value = e.DateCreated
+						m.DateCreated = append(m.DateCreated, e)
+					}
+					if e.DateIssued != "" {
+						e.Value = e.DateIssued
+						m.DateIssued = append(m.DateIssued, e)
+					}
+					if e.DateOther != "" {
+						e.Value = e.DateOther
+						m.DateOther = append(m.DateOther, e)
+					}
+					if e.DateValid != "" {
+						e.Value = e.DateValid
+						m.DateValid = append(m.DateValid, e)
+					}
+					if e.Place != "" {
+						e.Value = e.Place
+						m.Place = append(m.Place, e)
+					}
+					if e.Publisher != "" {
+						e.Value = fmt.Sprintf("relators:pbl:corporate_body:%s", e.Publisher)
+						m.Names = append(m.Names, e)
+					}
+					if e.Edition != "" {
+						e.Value = e.Edition
+						m.Edition = append(m.Edition, e)
+					}
+					if e.Issuance != "" {
+						e.Value = e.Issuance
+						m.Issuance = append(m.Issuance, e)
+					}
+
+				case "physicalDescription":
+					if e.Extent != "" {
+						e.Value = e.Extent
+						m.Extent = append(m.Extent, e)
+					}
+					if e.Form != "" {
+						e.Value = e.Form
+						m.Form = append(m.Form, e)
+					}
+					if e.InternetMediaType != "" {
+						e.Value = e.InternetMediaType
+						m.InternetMediaType = append(m.InternetMediaType, e)
+					}
+					if e.Origin != "" {
+						e.Value = e.Origin
+						m.Origin = append(m.Origin, e)
+					}
+					if e.Note != "" {
+						e.Value = e.Note
+						m.PhysicalDescription = append(m.PhysicalDescription, e)
+					}
+				case "recordInfo":
+					if e.RecordOrigin != "" {
+						e.Value = e.RecordOrigin
+						m.RecordOrigin = append(m.RecordOrigin, e)
+					}
+				case "typeOfResource":
+					m.ResourceType = append(m.ResourceType, e)
+				case "tableOfContents":
+					m.TableOfContents = append(m.TableOfContents, e)
+				}
+
 			}
 		case xml.EndElement:
 			if t == start.End() {

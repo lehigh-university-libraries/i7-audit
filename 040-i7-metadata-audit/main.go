@@ -90,6 +90,11 @@ type RelatedItem struct {
 	Number     string `json:"number,omitempty"`
 }
 
+type TypedText struct {
+	Attr0 string `json:"attr0,omitempty"`
+	Value string `json:"value"`
+}
+
 var (
 	pids           = map[string]string{}
 	header         = []string{}
@@ -458,9 +463,18 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
-				if e.Type != "" {
-					e.Value = fmt.Sprintf("attr0:%s:%s", e.Type, e.Value)
+
+				tt := TypedText{
+					Attr0: e.Type,
+					Value: e.Value,
 				}
+				jsonData, err := json.Marshal(tt)
+				if err != nil {
+					fmt.Println("Error marshaling JSON:", err)
+					return err
+				}
+
+				e.Value = string(jsonData)
 				switch t.Name.Local {
 				case "abstract":
 					m.Abstract = append(m.Abstract, e)

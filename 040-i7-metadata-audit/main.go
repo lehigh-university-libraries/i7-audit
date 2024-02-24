@@ -84,6 +84,12 @@ type HierarchicalGeographic struct {
 	Territory string `xml:"territory" json:"territory,omitempty"`
 }
 
+type RelatedItem struct {
+	Identifier string `json:"identifier,omitempty"`
+	Title      string `json:"title,omitempty"`
+	Number     string `json:"number,omitempty"`
+}
+
 var (
 	pids           = map[string]string{}
 	header         = []string{}
@@ -201,7 +207,8 @@ func main() {
 			}
 			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
-				return fmt.Errorf("HTTP request failed with status code: %d", resp.StatusCode)
+				log.Printf("HTTP request failed with status code: %d for %s", resp.StatusCode, pid)
+				return nil
 			}
 			i2Mods, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -373,7 +380,19 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
-				e.Value = fmt.Sprintf("title:%s:number:%s:identifier:%s", e.Title, e.Number, e.Identifier)
+
+				ri := RelatedItem{
+					Title:      e.Title,
+					Identifier: e.Identifier,
+					Number:     e.Number,
+				}
+				jsonData, err := json.Marshal(ri)
+				if err != nil {
+					fmt.Println("Error marshaling JSON:", err)
+					return err
+				}
+
+				e.Value = string(jsonData)
 				m.RelatedItem = append(m.RelatedItem, e)
 
 			case "name":

@@ -422,6 +422,9 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				if err := d.DecodeElement(&e, &t); err != nil {
 					return err
 				}
+				if e.NamePart == "" {
+					return nil
+				}
 				relator := "cre"
 				for _, r := range e.Role {
 					if r.Type == "code" {

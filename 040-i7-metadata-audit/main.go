@@ -113,10 +113,12 @@ type TypedText struct {
 }
 
 var (
-	pids           = map[string]string{}
+	pids = map[string]string{}
+	nids = map[string]string{}
+
 	header         = []string{}
 	fieldsToAccess = map[string]string{
-		"field_description":              "Abstract",
+		"field_abstract":                 "Abstract",
 		"field_rights":                   "AccessCondition",
 		"field_classification":           "Classification",
 		"field_genre":                    "Genre",
@@ -151,6 +153,7 @@ var (
 
 func init() {
 	cacheCsv(pids, "pids.csv")
+	cacheCsv(nids, "nids.csv")
 }
 
 func cacheCsv(m map[string]string, f string) {
@@ -173,6 +176,8 @@ func cacheCsv(m map[string]string, f string) {
 		}
 		if len(record) == 2 {
 			m[record[1]] = record[0]
+		} else if len(record) == 1 {
+			m[record[0]] = "ok"
 		}
 	}
 }
@@ -216,6 +221,14 @@ func main() {
 		if !info.IsDir() {
 			// read the i7 MODS we downloaded locally
 			pid := strings.ReplaceAll(info.Name(), ".xml", "")
+
+			// if we have a list of nids we want to process
+			// skip out if this pid<->nid is not in the list
+			nid := pids[pid]
+			if len(nids) > 0 && nids[nid] != "ok" {
+				return nil
+			}
+
 			i7Mods, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("Error reading file: %v", err)
@@ -241,7 +254,8 @@ func main() {
 			var i7, i2 Mods
 			xml.Unmarshal(i7Mods, &i7)
 			xml.Unmarshal(i2Mods, &i2)
-			log.Println(pid)
+			log.Println(pid, pids[pid])
+
 			row := modsMatch(pid, i7, i2)
 			if len(row) > 0 {
 				var record []string
@@ -282,6 +296,7 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 		i2Elements := reflect.Indirect(i2).FieldByName(fieldName).Interface().([]Element)
 		for k, e1 := range i7Elements {
 			if len(i2Elements) < k+1 {
+				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", e1, "\t", k, "\tMismatch")
 				row[drupalField] = append(row[drupalField], e1.Value)
 				mismatch = true
 				continue
@@ -296,7 +311,7 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 			v1 := normalize(e1.Value)
 			v2 := normalize(e2.Value)
 			if !areStringsEqualIgnoringSpecialChars(v1, v2) {
-				fmt.Println(drupalField, v1, v2)
+				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", v1, "\t", v2)
 				mismatch = true
 			}
 			row[drupalField] = append(row[drupalField], e1.Value)
@@ -338,10 +353,6 @@ func removeTimeFromDate(str string) string {
 
 func isAlphanumeric(r rune) bool {
 	if unicode.IsLetter(r) || unicode.IsDigit(r) {
-		return true
-	}
-
-	if (r >= '\u0030' && r <= '\u1FFF') || unicode.In(r, unicode.Mark, unicode.Sk, unicode.Lm) {
 		return true
 	}
 
@@ -463,7 +474,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				} else if !e.HierarchicalGeographic.Empty() {
 					e.Value, err = e.HierarchicalGeographic.Json()
 					if err != nil {
-						log.Println(e)
+						log.Println("Failed to unmarshal hierarchicalGeographic")
 						return fmt.Errorf("Failed to marshal hierarchical geographic as JSON")
 					}
 					m.SubjectGeographicHierarchical = append(m.SubjectGeographicHierarchical, e)
@@ -609,4 +620,13 @@ func (hg *HierarchicalGeographic) Json() (string, error) {
 	}
 
 	return string(jsonData), nil
+}
+
+func strInMap(e string, s []string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

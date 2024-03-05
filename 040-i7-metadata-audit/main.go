@@ -52,6 +52,8 @@ type Mods struct {
 	SubjectGeographicHierarchical []Element
 	SubjectName                   []Element
 	SubjectLcsh                   []Element
+	AltTitle                      []Element
+	TitlePartName                 []Element
 }
 
 type Element struct {
@@ -62,7 +64,7 @@ type Element struct {
 	Value                  string                 `xml:",innerxml"`
 	Identifier             string                 `xml:"identifier"`
 	Number                 string                 `xml:"part>detail>number"`
-	Title                  string                 `xml:"titleInfo>title"`
+	Title                  string                 `xml:"title"`
 	NamePart               string                 `xml:"namePart"`
 	Role                   []Element              `xml:"role>roleTerm"`
 	Geographic             SubElement             `xml:"geographic"`
@@ -86,6 +88,7 @@ type Element struct {
 	Origin                 string                 `xml:"digitalOrigin"`
 	RecordOrigin           string                 `xml:"recordOrigin"`
 	PhysicalLocation       string                 `xml:"physicalLocation"`
+	PartName               string                 `xml:"partName"`
 }
 
 type SubElement struct {
@@ -150,8 +153,8 @@ var (
 		"field_related_item":             "RelatedItem",
 		"field_lcsh_topic":               "SubjectLcsh",
 		"field_subject_hierarchical_geo": "SubjectGeographicHierarchical",
-		"field_alt_title":                "",
-		"field_title_part_name":          "",
+		"field_alt_title":                "AltTitle",
+		"field_title_part_name":          "TitlePartName",
 	}
 )
 
@@ -607,6 +610,15 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					if e.RecordOrigin != "" {
 						e.Value = e.RecordOrigin
 						m.RecordOrigin = append(m.RecordOrigin, e)
+					}
+				case "titleInfo":
+					if e.Type == "alternative" && e.Title != "" {
+						e.Value = e.Title
+						m.AltTitle = append(m.AltTitle, e)
+					}
+					if e.PartName != "" {
+						e.Value = e.PartName
+						m.TitlePartName = append(m.TitlePartName, e)
 					}
 				case "typeOfResource":
 					m.ResourceType = append(m.ResourceType, e)

@@ -57,6 +57,8 @@ type Mods struct {
 type Element struct {
 	Authority              string                 `xml:"authority,attr"`
 	Type                   string                 `xml:"type,attr"`
+	Point                  string                 `xml:"point,attr"`
+	Unit                   string                 `xml:"unit,attr"`
 	Value                  string                 `xml:",innerxml"`
 	Identifier             string                 `xml:"identifier"`
 	Number                 string                 `xml:"part>detail>number"`
@@ -109,12 +111,12 @@ type RelatedItem struct {
 
 type TypedText struct {
 	Attr0 string `json:"attr0,omitempty"`
+	Attr1 string `json:"attr1,omitempty"`
 	Value string `json:"value"`
 }
 
 var (
 	pids = map[string]string{}
-	nids = map[string]string{}
 
 	header         = []string{}
 	fieldsToAccess = map[string]string{
@@ -148,12 +150,13 @@ var (
 		"field_related_item":             "RelatedItem",
 		"field_lcsh_topic":               "SubjectLcsh",
 		"field_subject_hierarchical_geo": "SubjectGeographicHierarchical",
+		"field_alt_title":                "",
+		"field_title_part_name":          "",
 	}
 )
 
 func init() {
 	cacheCsv(pids, "pids.csv")
-	cacheCsv(nids, "nids.csv")
 }
 
 func cacheCsv(m map[string]string, f string) {
@@ -221,13 +224,6 @@ func main() {
 		if !info.IsDir() {
 			// read the i7 MODS we downloaded locally
 			pid := strings.ReplaceAll(info.Name(), ".xml", "")
-
-			// if we have a list of nids we want to process
-			// skip out if this pid<->nid is not in the list
-			nid := pids[pid]
-			if len(nids) > 0 && nids[nid] != "ok" {
-				return nil
-			}
 
 			i7Mods, err := os.ReadFile(path)
 			if err != nil {
@@ -490,6 +486,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 
 				tt := TypedText{
 					Attr0: e.Type,
+					Attr1: e.Point,
 					Value: e.Value,
 				}
 				jsonData, err := json.Marshal(tt)
@@ -569,7 +566,16 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 
 				case "physicalDescription":
 					if e.Extent != "" {
-						e.Value = e.Extent
+						tt := TypedText{
+							Value: e.Extent,
+							Attr0: e.Unit,
+						}
+						jsonData, err := json.Marshal(tt)
+						if err != nil {
+							fmt.Println("Error marshaling JSON:", err)
+							return err
+						}
+						e.Value = string(jsonData)
 						m.Extent = append(m.Extent, e)
 					}
 					if e.Form != "" {
@@ -585,7 +591,16 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 						m.Origin = append(m.Origin, e)
 					}
 					if e.Note != "" {
-						e.Value = e.Note
+						ttNote := TypedText{
+							Value: e.Note,
+							Attr0: e.Type,
+						}
+						jsonDataNote, err := json.Marshal(ttNote)
+						if err != nil {
+							fmt.Println("Error marshaling JSON:", err)
+							return err
+						}
+						e.Value = string(jsonDataNote)
 						m.PhysicalDescription = append(m.PhysicalDescription, e)
 					}
 				case "recordInfo":

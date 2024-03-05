@@ -48,6 +48,7 @@ type Mods struct {
 	ResourceType                  []Element `xml:"typeOfResource"`
 	Subject                       []Element `xml:"subject"`
 	TableOfContents               []Element `xml:"tableOfContents"`
+	PartDetail                    []Element `xml:"part"`
 	SubjectGeographic             []Element
 	SubjectGeographicHierarchical []Element
 	SubjectName                   []Element
@@ -89,6 +90,7 @@ type Element struct {
 	RecordOrigin           string                 `xml:"recordOrigin"`
 	PhysicalLocation       string                 `xml:"physicalLocation"`
 	PartName               string                 `xml:"partName"`
+	PartDetail             PartDetail             `xml:"detail"`
 }
 
 type SubElement struct {
@@ -116,6 +118,13 @@ type TypedText struct {
 	Attr0 string `json:"attr0,omitempty"`
 	Attr1 string `json:"attr1,omitempty"`
 	Value string `json:"value"`
+}
+
+type PartDetail struct {
+	Type    string `xml:"type,attr" json:"type,omitempty"`
+	Caption string `xml:"caption" json:"caption,omitempty"`
+	Number  string `xml:"number" json:"number,omitempty"`
+	Title   string `xml:"title" json:"title,omitempty"`
 }
 
 var (
@@ -155,6 +164,7 @@ var (
 		"field_subject_hierarchical_geo": "SubjectGeographicHierarchical",
 		"field_alt_title":                "AltTitle",
 		"field_title_part_name":          "TitlePartName",
+		"field_part_detail":              "PartDetail",
 	}
 )
 
@@ -624,8 +634,22 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					m.ResourceType = append(m.ResourceType, e)
 				case "tableOfContents":
 					m.TableOfContents = append(m.TableOfContents, e)
-				}
 
+				case "part":
+					pd := PartDetail{
+						Type:    e.PartDetail.Type,
+						Caption: e.PartDetail.Caption,
+						Number:  e.PartDetail.Number,
+						Title:   e.PartDetail.Title,
+					}
+					pdj, err := json.Marshal(pd)
+					if err != nil {
+						fmt.Println("Error marshaling JSON:", err)
+						return err
+					}
+					e.Value = string(pdj)
+					m.PartDetail = append(m.PartDetail, e)
+				}
 			}
 		case xml.EndElement:
 			if t == start.End() {

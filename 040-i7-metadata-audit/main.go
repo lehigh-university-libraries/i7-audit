@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -77,7 +78,7 @@ type Element struct {
 	DateCaptured           string                 `xml:"dateCaptured"`
 	DateCreated            string                 `xml:"dateCreated"`
 	DateIssued             string                 `xml:"dateIssued"`
-	DateOther              string                 `xml:"dateOther"`
+	DateOther              SubElement             `xml:"dateOther"`
 	DateValid              string                 `xml:"dateValid"`
 	Edition                string                 `xml:"edition"`
 	Issuance               string                 `xml:"issuance"`
@@ -461,6 +462,9 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				if e.Topic != "" {
 					e.Value = e.Topic
+					if _, err := strconv.Atoi(e.Value); err == nil {
+						e.Value = fmt.Sprintf("workbench-number-%s", e.Value)
+					}
 					if e.Authority == "lcsh" {
 						m.SubjectLcsh = append(m.SubjectLcsh, e)
 					} else if e.Authority != "" {
@@ -475,9 +479,15 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					} else if e.Geographic.Authority == "local" {
 						vid = "geographic_local"
 					}
+					if _, err := strconv.Atoi(e.Geographic.Value); err == nil {
+						e.Geographic.Value = fmt.Sprintf("workbench-number-%s", e.Geographic.Value)
+					}
 					e.Value = fmt.Sprintf("%s:%s", vid, e.Geographic.Value)
 					m.SubjectGeographic = append(m.SubjectGeographic, e)
 				} else if e.SubjectName != "" {
+					if _, err := strconv.Atoi(e.SubjectName); err == nil {
+						e.SubjectName = fmt.Sprintf("workbench-number-%s", e.SubjectName)
+					}
 					e.Value = e.SubjectName
 					m.SubjectName = append(m.SubjectName, e)
 				} else if !e.HierarchicalGeographic.Empty() {
@@ -488,8 +498,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					}
 					m.SubjectGeographicHierarchical = append(m.SubjectGeographicHierarchical, e)
 				} else {
-					log.Println(e)
-					return fmt.Errorf("Didn't catch this subject")
+					return nil
 				}
 			case "abstract", "identifier", "note":
 				var e Element
@@ -508,7 +517,9 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					return err
 				}
 
-				e.Value = string(jsonData)
+				if tt.Value != "" {
+					e.Value = string(jsonData)
+				}
 				switch t.Name.Local {
 				case "abstract":
 					m.Abstract = append(m.Abstract, e)
@@ -552,8 +563,17 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 						e.Value = e.DateIssued
 						m.DateIssued = append(m.DateIssued, e)
 					}
-					if e.DateOther != "" {
-						e.Value = e.DateOther
+					if e.DateOther.Value != "" {
+						tt := TypedText{
+							Attr0: e.DateOther.Type,
+							Value: e.DateOther.Value,
+						}
+						jsonData, err := json.Marshal(tt)
+						if err != nil {
+							fmt.Println("Error marshaling JSON:", err)
+							return err
+						}
+						e.Value = string(jsonData)
 						m.DateOther = append(m.DateOther, e)
 					}
 					if e.DateValid != "" {

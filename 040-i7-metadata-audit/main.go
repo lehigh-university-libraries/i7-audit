@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net/http"
@@ -133,11 +134,11 @@ type PartDetail struct {
 var (
 	pids = map[string]string{}
 
-	channels = 20
-	wg       sync.WaitGroup
-	ch       = make(chan fileInfo, channels)
-	mu       sync.Mutex
-
+	channels       = 50
+	wg             sync.WaitGroup
+	ch             = make(chan fileInfo, channels)
+	mu             sync.Mutex
+	skip           = true
 	header         = []string{}
 	fieldsToAccess = map[string]string{
 		"field_abstract":                 "Abstract",
@@ -293,7 +294,7 @@ func worker(writer *csv.Writer, header []string) {
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			log.Fatalf("HTTP request failed with status code: %d for %s", resp.StatusCode, pid)
+			continue
 		}
 		i2Mods, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -312,7 +313,7 @@ func worker(writer *csv.Writer, header []string) {
 				cell := strings.Join(row[key], "|")
 				record = append(record, cell)
 			}
-			writeToCSV(writer, record)
+			err = writeToCSV(writer, record)
 			if err != nil {
 				panic(err)
 			}
@@ -323,12 +324,15 @@ func worker(writer *csv.Writer, header []string) {
 	}
 }
 
-func writeToCSV(writer *csv.Writer, row []string) {
+func writeToCSV(writer *csv.Writer, row []string) error {
 	mu.Lock()
 	defer mu.Unlock()
 	if err := writer.Write(row); err != nil {
-		fmt.Printf("Error writing to CSV: %v\n", err)
+		return err
 	}
+	writer.Flush()
+
+	return nil
 }
 
 func modsMatch(pid string, m1, m2 Mods) map[string][]string {
@@ -344,7 +348,7 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 		i2Elements := reflect.Indirect(i2).FieldByName(fieldName).Interface().([]Element)
 		for k, e1 := range i7Elements {
 			if len(i2Elements) < k+1 {
-				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", e1, "\t", k, "\tMismatch")
+				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", fmt.Sprintf("%#v", e1), "\t", k, "\tMismatch")
 				row[drupalField] = append(row[drupalField], e1.Value)
 				mismatch = true
 				continue
@@ -359,7 +363,7 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 			v1 := normalize(e1.Value)
 			v2 := normalize(e2.Value)
 			if !areStringsEqualIgnoringSpecialChars(v1, v2) {
-				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", v1, "\t", v2)
+				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", fmt.Sprintf("%#v", v1), "\t", fmt.Sprintf("%#v", v2))
 				mismatch = true
 			}
 			row[drupalField] = append(row[drupalField], e1.Value)
@@ -384,7 +388,7 @@ func normalize(s string) string {
 	if isDateString(s) {
 		s = removeTimeFromDate(s)
 	}
-
+	s = html.UnescapeString(s)
 	return s
 }
 

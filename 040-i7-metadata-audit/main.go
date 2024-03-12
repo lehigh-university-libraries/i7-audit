@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -95,6 +96,20 @@ type Element struct {
 	PhysicalLocation       string                 `xml:"physicalLocation"`
 	PartName               string                 `xml:"partName"`
 	PartDetail             PartDetail             `xml:"detail"`
+}
+
+type ByValue []Element
+
+func (a ByValue) Len() int {
+	return len(a)
+}
+
+func (a ByValue) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+func (a ByValue) Less(i, j int) bool {
+	return a[i].Value < a[j].Value
 }
 
 type SubElement struct {
@@ -346,6 +361,10 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 		row[drupalField] = []string{}
 		i7Elements := reflect.Indirect(i7).FieldByName(fieldName).Interface().([]Element)
 		i2Elements := reflect.Indirect(i2).FieldByName(fieldName).Interface().([]Element)
+
+		sort.Sort(ByValue(i7Elements))
+		sort.Sort(ByValue(i2Elements))
+
 		for k, e1 := range i7Elements {
 			if len(i2Elements) < k+1 {
 				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", fmt.Sprintf("%#v", e1), "\t", k, "\tMismatch")
@@ -383,12 +402,17 @@ func normalize(s string) string {
 	pattern := regexp.MustCompile(`\s+`)
 	s = pattern.ReplaceAllString(s, " ")
 
+	// remove CDATA wrapper
+	re := regexp.MustCompile(`<!\[CDATA\[(.*?)\]\]>`)
+	s = re.ReplaceAllString(s, "$1")
+
 	s = strings.ToLower(s)
 	s = strings.TrimSpace(s)
 	if isDateString(s) {
 		s = removeTimeFromDate(s)
 	}
 	s = html.UnescapeString(s)
+
 	return s
 }
 

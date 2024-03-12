@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -67,6 +68,7 @@ type Element struct {
 	Identifier             string                 `xml:"identifier"`
 	Number                 string                 `xml:"part>detail>number"`
 	Title                  string                 `xml:"title"`
+	TitleInfo              string                 `xml:"titleInfo>title"`
 	NamePart               string                 `xml:"namePart"`
 	Role                   []Element              `xml:"role>roleTerm"`
 	Geographic             SubElement             `xml:"geographic"`
@@ -131,6 +133,11 @@ type PartDetail struct {
 var (
 	pids = map[string]string{}
 
+	channels = 20
+	wg       sync.WaitGroup
+	ch       = make(chan fileInfo, channels)
+	mu       sync.Mutex
+
 	header         = []string{}
 	fieldsToAccess = map[string]string{
 		"field_abstract":                 "Abstract",
@@ -168,6 +175,11 @@ var (
 		"field_part_detail":              "PartDetail",
 	}
 )
+
+type fileInfo struct {
+	Path string
+	Info os.FileInfo
+}
 
 func init() {
 	cacheCsv(pids, "pids.csv")
@@ -217,6 +229,8 @@ func main() {
 	}
 	defer file.Close()
 	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
 	header = append(header, "node_id")
 	for field, _ := range fieldsToAccess {
 		header = append(header, field)
@@ -224,6 +238,11 @@ func main() {
 	if err := writer.Write(header); err != nil {
 		fmt.Println("Error:", err)
 		return
+	}
+
+	wg.Add(channels)
+	for i := 0; i < channels; i++ {
+		go worker(writer, header)
 	}
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -236,60 +255,79 @@ func main() {
 			return err
 		}
 		if !info.IsDir() {
-			// read the i7 MODS we downloaded locally
-			pid := strings.ReplaceAll(info.Name(), ".xml", "")
-
-			i7Mods, err := os.ReadFile(path)
-			if err != nil {
-				return fmt.Errorf("Error reading file: %v", err)
-			}
-
-			// get the MODS output in i2
-			url := fmt.Sprintf("https://islandora.dev/islandora/object/%s?_format=mods", pid)
-			resp, err := http.Get(url)
-			if err != nil {
-				return fmt.Errorf("Error making GET request: %v", err)
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				log.Printf("HTTP request failed with status code: %d for %s", resp.StatusCode, pid)
-				return nil
-			}
-			i2Mods, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return fmt.Errorf("Error reading response body: %v", err)
-			}
-
-			// compare i7 vs i2
-			var i7, i2 Mods
-			xml.Unmarshal(i7Mods, &i7)
-			xml.Unmarshal(i2Mods, &i2)
-			log.Println(pid, pids[pid])
-
-			row := modsMatch(pid, i7, i2)
-			if len(row) > 0 {
-				var record []string
-				for _, key := range header {
-					cell := strings.Join(row[key], "|")
-					record = append(record, cell)
-				}
-				err = writer.Write(record)
-				if err != nil {
-					panic(err)
-				}
-				writer.Flush()
-				if err := writer.Error(); err != nil {
-					panic(err)
-				}
-			}
+			ch <- fileInfo{Path: path, Info: info}
 		}
 
 		return nil
 	})
+	close(ch)
+	wg.Wait()
 
 	if err != nil {
 		fmt.Printf("Error walking directory: %v\n", err)
 		return
+	}
+}
+
+func worker(writer *csv.Writer, header []string) {
+	defer wg.Done()
+
+	for f := range ch {
+		path := f.Path
+		info := f.Info
+		// read the i7 MODS we downloaded locally
+		pid := strings.ReplaceAll(info.Name(), ".xml", "")
+		nid := pids[pid]
+		log.Println(pid, nid)
+
+		i7Mods, err := os.ReadFile(path)
+		if err != nil {
+			log.Fatalf("Error reading file: %v", err)
+		}
+
+		// get the MODS output in i2
+		url := fmt.Sprintf("https://islandora.dev/islandora/object/%s?_format=mods", pid)
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Fatalf("Error making GET request: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			log.Fatalf("HTTP request failed with status code: %d for %s", resp.StatusCode, pid)
+		}
+		i2Mods, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalf("Error reading response body: %v", err)
+		}
+
+		// compare i7 vs i2
+		var i7, i2 Mods
+		xml.Unmarshal(i7Mods, &i7)
+		xml.Unmarshal(i2Mods, &i2)
+
+		row := modsMatch(pid, i7, i2)
+		if len(row) > 0 {
+			var record []string
+			for _, key := range header {
+				cell := strings.Join(row[key], "|")
+				record = append(record, cell)
+			}
+			writeToCSV(writer, record)
+			if err != nil {
+				panic(err)
+			}
+			if err := writer.Error(); err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func writeToCSV(writer *csv.Writer, row []string) {
+	mu.Lock()
+	defer mu.Unlock()
+	if err := writer.Write(row); err != nil {
+		fmt.Printf("Error writing to CSV: %v\n", err)
 	}
 }
 
@@ -419,16 +457,19 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				*m = Mods(alias)
 			case "relatedItem":
-				var e Element
-				if err := d.DecodeElement(&e, &t); err != nil {
+				var e1 Element
+				if err := d.DecodeElement(&e1, &t); err != nil {
 					return err
 				}
+				var e Element
+				xml.Unmarshal([]byte(e1.Value), &e)
 
 				ri := RelatedItem{
 					Title:      e.Title,
 					Identifier: e.Identifier,
 					Number:     e.Number,
 				}
+
 				jsonData, err := json.Marshal(ri)
 				if err != nil {
 					fmt.Println("Error marshaling JSON:", err)

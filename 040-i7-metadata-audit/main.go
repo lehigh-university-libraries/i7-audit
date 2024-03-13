@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -95,21 +94,7 @@ type Element struct {
 	RecordOrigin           string                 `xml:"recordOrigin"`
 	PhysicalLocation       string                 `xml:"physicalLocation"`
 	PartName               string                 `xml:"partName"`
-	PartDetail             PartDetail             `xml:"detail"`
-}
-
-type ByValue []Element
-
-func (a ByValue) Len() int {
-	return len(a)
-}
-
-func (a ByValue) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
-func (a ByValue) Less(i, j int) bool {
-	return a[i].Value < a[j].Value
+	PartDetail             []PartDetail           `xml:"detail"`
 }
 
 type SubElement struct {
@@ -362,9 +347,6 @@ func modsMatch(pid string, m1, m2 Mods) map[string][]string {
 		i7Elements := reflect.Indirect(i7).FieldByName(fieldName).Interface().([]Element)
 		i2Elements := reflect.Indirect(i2).FieldByName(fieldName).Interface().([]Element)
 
-		sort.Sort(ByValue(i7Elements))
-		sort.Sort(ByValue(i2Elements))
-
 		for k, e1 := range i7Elements {
 			if len(i2Elements) < k+1 {
 				fmt.Println(pid, "\t", pids[pid], "\t", drupalField, "\t", fmt.Sprintf("%#v", e1), "\t", k, "\tMismatch")
@@ -515,14 +497,21 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				if e.NamePart == "" {
 					return nil
 				}
-				relator := "cre"
+				vocab := "person"
+				relator := "relators:att"
+				if e.Type == "corporate" {
+					vocab = "corporate_body"
+				}
 				for _, r := range e.Role {
 					if r.Type == "code" {
-						relator = r.Value
+						relator = fmt.Sprintf("relators:%s", r.Value)
+						break
+					} else if r.Value == "Department" {
+						relator = "label:department"
 						break
 					}
 				}
-				e.Value = fmt.Sprintf("relators:%s:person:%s", relator, e.NamePart)
+				e.Value = fmt.Sprintf("%s:%s:%s", relator, vocab, e.NamePart)
 				m.Names = append(m.Names, e)
 			case "subject":
 				var e Element
@@ -725,19 +714,21 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					m.TableOfContents = append(m.TableOfContents, e)
 
 				case "part":
-					pd := PartDetail{
-						Type:    e.PartDetail.Type,
-						Caption: e.PartDetail.Caption,
-						Number:  e.PartDetail.Number,
-						Title:   e.PartDetail.Title,
+					for _, d := range e.PartDetail {
+						pd := PartDetail{
+							Type:    d.Type,
+							Caption: d.Caption,
+							Number:  d.Number,
+							Title:   d.Title,
+						}
+						pdj, err := json.Marshal(pd)
+						if err != nil {
+							fmt.Println("Error marshaling JSON:", err)
+							return err
+						}
+						e.Value = string(pdj)
+						m.PartDetail = append(m.PartDetail, e)
 					}
-					pdj, err := json.Marshal(pd)
-					if err != nil {
-						fmt.Println("Error marshaling JSON:", err)
-						return err
-					}
-					e.Value = string(pdj)
-					m.PartDetail = append(m.PartDetail, e)
 				}
 			}
 		case xml.EndElement:

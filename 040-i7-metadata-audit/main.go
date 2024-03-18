@@ -564,6 +564,10 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					return err
 				}
 
+				if e.Value == "" {
+					return nil
+				}
+
 				tt := TypedText{
 					Attr0: e.Type,
 					Attr1: e.Point,
@@ -575,9 +579,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					return err
 				}
 
-				if tt.Value != "" {
-					e.Value = string(jsonData)
-				}
+				e.Value = string(jsonData)
 				switch t.Name.Local {
 				case "abstract":
 					m.Abstract = append(m.Abstract, e)
@@ -670,7 +672,8 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 						m.Extent = append(m.Extent, e)
 					}
 					if e.Form != "" {
-						e.Value = e.Form
+						e.Value = getFormValue(e.Form)
+
 						m.Form = append(m.Form, e)
 					}
 					if e.InternetMediaType != "" {
@@ -760,4 +763,52 @@ func strInMap(e string, s []string) bool {
 		}
 	}
 	return false
+}
+
+func getFormValue(s string) string {
+	re := regexp.MustCompile(`http://vocab.getty.edu/page/aat/(\d+)`)
+
+	// Find the numeric part from the URL using the regular expression
+	matches := re.FindStringSubmatch(s)
+	if len(matches) < 2 {
+		fmt.Println("No match found")
+		return ""
+	}
+	numericPart := matches[1]
+
+	// Construct the URL for the JSON endpoint
+	jsonURL := fmt.Sprintf("https://vocab.getty.edu/aat/%s.json", numericPart)
+
+	// Send an HTTP GET request to the constructed URL
+	resp, err := http.Get(jsonURL)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return s
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return s
+	}
+
+	// Parse the JSON response
+	var jsonResponse map[string]interface{}
+	err = json.Unmarshal(body, &jsonResponse)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return s
+	}
+
+	// Extract the ._label field from the JSON response
+	label, ok := jsonResponse["_label"].(string)
+	if !ok {
+		fmt.Println("Error: _label field not found or not a string")
+		return s
+	}
+
+	fmt.Println("_label:", label)
+	return label
 }

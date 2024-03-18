@@ -20,6 +20,10 @@ import (
 	"unicode/utf8"
 )
 
+type GettyResponse struct {
+	Label string `json:"_label"`
+}
+
 type Mods struct {
 	XMLName                       xml.Name  `xml:"mods"`
 	TitleInfo                     []Element `xml:"titleInfo>title"`
@@ -766,9 +770,8 @@ func strInMap(e string, s []string) bool {
 }
 
 func getFormValue(s string) string {
-	re := regexp.MustCompile(`http://vocab.getty.edu/page/aat/(\d+)`)
-
 	// Find the numeric part from the URL using the regular expression
+	re := regexp.MustCompile(`http://vocab.getty.edu/page/aat/(\d+)`)
 	matches := re.FindStringSubmatch(s)
 	if len(matches) < 2 {
 		fmt.Println("No match found")
@@ -776,39 +779,28 @@ func getFormValue(s string) string {
 	}
 	numericPart := matches[1]
 
-	// Construct the URL for the JSON endpoint
 	jsonURL := fmt.Sprintf("https://vocab.getty.edu/aat/%s.json", numericPart)
-
-	// Send an HTTP GET request to the constructed URL
-	resp, err := http.Get(jsonURL)
+	req, err := http.NewRequest("GET", jsonURL, nil)
 	if err != nil {
 		fmt.Println("Error:", err)
+		return s
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
 		return s
 	}
 	defer resp.Body.Close()
 
-	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return s
 	}
-
-	// Parse the JSON response
-	var jsonResponse map[string]interface{}
-	err = json.Unmarshal(body, &jsonResponse)
+	var r GettyResponse
+	err = json.Unmarshal(body, &r)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return s
 	}
 
-	// Extract the ._label field from the JSON response
-	label, ok := jsonResponse["_label"].(string)
-	if !ok {
-		fmt.Println("Error: _label field not found or not a string")
-		return s
-	}
-
-	fmt.Println("_label:", label)
-	return label
+	return r.Label
 }

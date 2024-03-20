@@ -478,6 +478,9 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				var e Element
 				xml.Unmarshal([]byte(e1.Value), &e)
 
+				if e.Title == "" && e.Identifier == "" && e.Number == "" {
+					continue
+				}
 				ri := RelatedItem{
 					Title:      e.Title,
 					Identifier: e.Identifier,
@@ -499,7 +502,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					return err
 				}
 				if e.NamePart == "" {
-					return nil
+					continue
 				}
 				vocab := "person"
 				relator := "relators:att"
@@ -550,7 +553,12 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					if _, err := strconv.Atoi(e.SubjectName); err == nil {
 						e.SubjectName = fmt.Sprintf("workbench-number-%s", e.SubjectName)
 					}
-					e.Value = e.SubjectName
+					snVocab := "corporate_body"
+					if strings.Contains(e.Value, ",") {
+						snVocab = "person"
+					}
+
+					e.Value = fmt.Sprintf("%s:%s", snVocab, e.SubjectName)
 					m.SubjectName = append(m.SubjectName, e)
 				} else if !e.HierarchicalGeographic.Empty() {
 					e.Value, err = e.HierarchicalGeographic.Json()
@@ -560,7 +568,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 					}
 					m.SubjectGeographicHierarchical = append(m.SubjectGeographicHierarchical, e)
 				} else {
-					return nil
+					continue
 				}
 			case "abstract", "identifier", "note":
 				var e Element
@@ -569,7 +577,7 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 
 				if e.Value == "" {
-					return nil
+					continue
 				}
 
 				tt := TypedText{
@@ -599,11 +607,17 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				switch t.Name.Local {
 				case "accessCondition":
-					m.AccessCondition = append(m.AccessCondition, e)
+					if m.AccessCondition != "" {
+						m.AccessCondition = append(m.AccessCondition, e)
+					}
 				case "classification":
-					m.Classification = append(m.Classification, e)
+					if m.Classification != "" {
+						m.Classification = append(m.Classification, e)
+					}
 				case "genre":
-					m.Genre = append(m.Genre, e)
+					if m.Genre != "" {
+						m.Genre = append(m.Genre, e)
+					}
 				case "language":
 					if e.Language != "" {
 						e.Value = e.Language
@@ -716,12 +730,18 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 						m.TitlePartName = append(m.TitlePartName, e)
 					}
 				case "typeOfResource":
-					m.ResourceType = append(m.ResourceType, e)
+					if m.ResourceType != "" {
+						m.ResourceType = append(m.ResourceType, e)
+					}
 				case "tableOfContents":
-					m.TableOfContents = append(m.TableOfContents, e)
-
+					if m.TableOfContents != "" {
+						m.TableOfContents = append(m.TableOfContents, e)
+					}
 				case "part":
 					for _, d := range e.PartDetail {
+						if d.Caption == "" && d.Number == "" && d.Title == "" {
+							continue
+						}
 						pd := PartDetail{
 							Type:    d.Type,
 							Caption: d.Caption,
@@ -774,8 +794,7 @@ func getFormValue(s string) string {
 	re := regexp.MustCompile(`http://vocab.getty.edu/page/aat/(\d+)`)
 	matches := re.FindStringSubmatch(s)
 	if len(matches) < 2 {
-		fmt.Println("No match found")
-		return ""
+		return s
 	}
 	numericPart := matches[1]
 

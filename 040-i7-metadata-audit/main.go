@@ -607,15 +607,15 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 				}
 				switch t.Name.Local {
 				case "accessCondition":
-					if m.AccessCondition != "" {
+					if e.Value != "" {
 						m.AccessCondition = append(m.AccessCondition, e)
 					}
 				case "classification":
-					if m.Classification != "" {
+					if e.Value != "" {
 						m.Classification = append(m.Classification, e)
 					}
 				case "genre":
-					if m.Genre != "" {
+					if e.Value != "" {
 						m.Genre = append(m.Genre, e)
 					}
 				case "language":
@@ -730,11 +730,11 @@ func (m *Mods) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 						m.TitlePartName = append(m.TitlePartName, e)
 					}
 				case "typeOfResource":
-					if m.ResourceType != "" {
+					if e.Value != "" {
 						m.ResourceType = append(m.ResourceType, e)
 					}
 				case "tableOfContents":
-					if m.TableOfContents != "" {
+					if e.Value != "" {
 						m.TableOfContents = append(m.TableOfContents, e)
 					}
 				case "part":
